@@ -16,5 +16,17 @@ This depends on Agner Fog's VCL library [Link: https://github.com/vectorclass/ve
 
 For testing, it depends on Google Benchmark [Link: https://github.com/google/benchmark]
 
+The AlignedVector file comes from here on StackOverflow [link: https://stackoverflow.com/a/70994249]
+
 If you come across this and saya its poorly organized, i'll take help in writing a better README, making a VCL plugin out of this and CMake.
 For now, its just a bunch of source files in a git.
+
+# Building
+
+I built this on Visual Studio 2019 using Clang.
+
+This ***should*** compile on Linux with both Clang and GCC. There might be a few things that won't, such as atributtes and pragmas, but not many, remove them at will.
+
+If i did everything right, it should also produce next to no warnings.
+
+Some of the args i used are std=c++20 or above (experimental in at least Clang 12), -Ofast (yes i know), and march=native
