@@ -95,15 +95,15 @@ protected:
 				startup = false;
 			});
 
-			for (auto i = 0u; i < numThreads; ++i) {
-				mThreads.emplace_back([&]() {
+			for (auto i = 0u; i < numThreads; i++) {
+				mThreads.emplace_back([&](int j) {
 					while (true) {
 						mainBarrier.arrive_and_wait();
 						if (!mRunning) [[unlikely]] break; //exit early if we where told to stop
-						kernel(i);
+						kernel(j);
 					}
 					mainBarrier.arrive_and_drop(); //we have to resync
-				});
+				}, i);
 			}
 
 			//stopping code moved here
