@@ -5,11 +5,11 @@
 
 #include "extras.h"
 
-template <typename T, typename U, int N, bool NT>
+template <typename T, typename U, bool NT>
 struct frameData;
 
-template <typename T, typename U, int N, bool NT>
-struct frameData<T, U, N, NT>::lineData {
+template <typename T, typename U, bool NT>
+struct frameData<T, U, NT>::lineData {
 
 	lineData(frameData& parent, int y, int width);
 
@@ -32,6 +32,7 @@ protected:
 	const int y;
 	const int dim;
 	const int len;
+	const int taps;
 	const int width;
 	const int linePad;
 	const int paddedLen;
@@ -50,21 +51,21 @@ protected:
 
 };
 
-template <typename T, typename U, int N, bool NT>
-frameData<T, U, N, NT>::lineData::lineData(frameData& parent, int y, int width)
-	: y(y), dim(parent.dim), len(y * 4 + 2), width(width), linePad(Vec8i().size()), paddedLen((len / linePad)* linePad + linePad),
-	tapsOffset(-(N / 2 - N + 1)), outTopOffset(y* (width * 2)), outBotOffset((width - 1 - y)* (width * 2)), parent(parent) {
+template <typename T, typename U, bool NT>
+frameData<T, U, NT>::lineData::lineData(frameData& parent, int y, int width)
+	: y(y), dim(parent.dim), len(y * 4 + 2), taps(parent.taps), width(width), linePad(Vec8i().size()), paddedLen((len / linePad)* linePad + linePad),
+	tapsOffset(-(taps / 2 - taps + 1)), outTopOffset(y* (width * 2)), outBotOffset((width - 1 - y)* (width * 2)), parent(parent) {
 	xIndexes.resize(paddedLen);
 	yIndexes.resize(paddedLen);
 	lineIndexes.resize(width);
-	coeffs.resize(N);
+	coeffs.resize(taps);
 	for (auto& subCoeffs : coeffs)
 		subCoeffs.resize(width);
 	constructGatherLUT();
 }
 
-template <typename T, typename U, int N, bool NT>
-frameData<T, U, N, NT>::lineData::~lineData() {
+template <typename T, typename U, bool NT>
+frameData<T, U, NT>::lineData::~lineData() {
 	xIndexes.clear();
 	yIndexes.clear();
 	lineIndexes.clear();
@@ -73,10 +74,10 @@ frameData<T, U, N, NT>::lineData::~lineData() {
 	coeffs.clear();
 }
 
-template <typename T, typename U, int N, bool NT>
-void frameData<T, U, N, NT>::lineData::processLine(const T* in, T* out) {
-	float inTopArray[3][paddedLen + N];
-	float inBotArray[3][paddedLen + N];
+template <typename T, typename U, bool NT>
+void frameData<T, U, NT>::lineData::processLine(const T* in, T* out) {
+	float inTopArray[3][paddedLen + taps];
+	float inBotArray[3][paddedLen + taps];
 	U outTopArray[3][width * 2];
 	U outBotArray[3][width * 2];
 	inTopLine = { inTopArray[0] + tapsOffset, inTopArray[1] + tapsOffset, inTopArray[2] + tapsOffset };
@@ -88,8 +89,8 @@ void frameData<T, U, N, NT>::lineData::processLine(const T* in, T* out) {
 	storeLines(out);
 }
 
-template <typename T, typename U, int N, bool NT>
-void frameData<T, U, N, NT>::lineData::gatherLines(const T* in) {
+template <typename T, typename U, bool NT>
+void frameData<T, U, NT>::lineData::gatherLines(const T* in) {
 	for (unsigned long long i = 0; i < xIndexes.size(); i += Vec8us().size()) {
 
 		Vec8i x = extend(Vec8us().load(&(xIndexes[i])));
@@ -103,7 +104,7 @@ void frameData<T, U, N, NT>::lineData::gatherLines(const T* in) {
 
 	}
 	//margins
-	for (int i = 0; i < N / 2; i++) {
+	for (int i = 0; i < taps / 2; i++) {
 		auto leftOffset = (i - tapsOffset) % len;
 		leftOffset += leftOffset < 0 ? len : 0;
 		auto rightOffset = (len + i) % len;
@@ -117,8 +118,8 @@ void frameData<T, U, N, NT>::lineData::gatherLines(const T* in) {
 	}
 }
 
-template <typename T, typename U, int N, bool NT>
-void frameData<T, U, N, NT>::lineData::interpLines(void) {
+template <typename T, typename U, bool NT>
+void frameData<T, U, NT>::lineData::interpLines(void) {
 
 	const int Lj = len / 2;
 
@@ -132,7 +133,7 @@ void frameData<T, U, N, NT>::lineData::interpLines(void) {
 		Vec8i baseIndex(lineIndexes[i]);
 
 #pragma unroll(1)
-		for (int j = 0; j < N; j++) {
+		for (int j = 0; j < taps; j++) {
 			Vec8i tempIndexes = indexes + j - tapsOffset;
 			Vec8f coeff = Vec8f().load(&coeffs[j][i]);
 			for (int component = 0; component < 3; component++) {
@@ -159,8 +160,8 @@ void frameData<T, U, N, NT>::lineData::interpLines(void) {
 	}
 }
 
-template <typename T, typename U, int N, bool NT>
-void frameData<T, U, N, NT>::lineData::storeLines(T* out) {
+template <typename T, typename U, bool NT>
+void frameData<T, U, NT>::lineData::storeLines(T* out) {
 	for (int component = 0; component < 3; component++) {
 		auto compOutPtr = out + (width * width * 2 * component);
 		store2out<NT>(outTopLine[component], compOutPtr + outTopOffset, width * 2);
@@ -168,8 +169,8 @@ void frameData<T, U, N, NT>::lineData::storeLines(T* out) {
 	}
 }
 
-template <typename T, typename U, int N, bool NT>
-void frameData<T, U, N, NT>::lineData::constructGatherLUT(void) {
+template <typename T, typename U, bool NT>
+void frameData<T, U, NT>::lineData::constructGatherLUT(void) {
 
 	const int Lj = len / 2;
 	const int halfWidth = width / 2;
@@ -196,7 +197,7 @@ void frameData<T, U, N, NT>::lineData::constructGatherLUT(void) {
 		auto x_ = Dj * x;
 		x_ -= floor(x_);
 		auto coeff = parent.buildCoeffs(x_);
-		for (int i = 0; i < N; i++)
+		for (int i = 0; i < taps; i++)
 			coeffs[i][x] = coeff[i];
 	}
 }

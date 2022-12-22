@@ -12,12 +12,12 @@
 #include "vectormath_hyp.h"
 #include "vectormath_trig.h"
 
-template <typename T, typename U, int N, bool NT>
+template <typename T, typename U, bool NT>
 struct frameData {
 
 	using DataType = T;
 
-	frameData(int dim);
+	frameData(int dim, int taps);
 
 	frameData() = delete;
 
@@ -34,28 +34,29 @@ protected:
 	struct lineData;
 
 	const int dim;
+	const int taps;
 	std::vector<lineData> lines;
 };
 
-template <typename T, typename U, int N, bool NT>
-frameData<T, U, N, NT>::frameData(int dim) : dim(dim) {
+template <typename T, typename U, bool NT>
+frameData<T, U, NT>::frameData(int dim, int taps) : dim(dim), taps(taps) {
 	lines.reserve(dim / 2);
 	for (int i = 0; i < dim / 2; i++)
 		lines.emplace_back(*this, i, dim);
 }
 
-template <typename T, typename U, int N, bool NT>
-frameData<T, U, N, NT>::~frameData() { lines.clear(); }
+template <typename T, typename U, bool NT>
+frameData<T, U, NT>::~frameData() { lines.clear(); }
 
-template <typename T, typename U, int N, bool NT>
-void frameData<T, U, N, NT>::processFrame(T* in, T* out) {
+template <typename T, typename U, bool NT>
+void frameData<T, U, NT>::processFrame(T* in, T* out) {
 	expandUV(in + dim * dim);
 	for (auto& line : lines)
 		line.processLine(in, out);
 }
 
-template <typename T, typename U, int N, bool NT>
-void frameData<T, U, N, NT>::expandUV(T* data) {
+template <typename T, typename U, bool NT>
+void frameData<T, U, NT>::expandUV(T* data) {
 
 	 // using namespace std::chrono;
 	 // auto start = high_resolution_clock::now(); // we check time b4 we wait for buffers as we just finished the kernel
@@ -129,10 +130,10 @@ void frameData<T, U, N, NT>::expandUV(T* data) {
 	 // std::printf("conv UV: %.3fms\n", (high_resolution_clock::now() - start).count() / 1e6);
 }
 
-template <typename T, typename U, int N, bool NT>
-std::vector<float> frameData<T, U, N, NT>::buildCoeffs(double x) {
-	std::vector<float> ret(N, 0.0f);
-	ret[-(N / 2 - N + 1)] = 1.0f;
+template <typename T, typename U, bool NT>
+std::vector<float> frameData<T, U, NT>::buildCoeffs(double x) {
+	std::vector<float> ret(taps, 0.0f);
+	ret[-(taps / 2 - taps + 1)] = 1.0f;
 	return ret;
 }
 
