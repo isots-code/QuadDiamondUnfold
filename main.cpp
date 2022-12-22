@@ -33,17 +33,18 @@ static void bench(benchmark::State& s) {
 	// Variable for our results
 	AlignedVector<T> out(dim * dim * 2 * 3);
 
-	benchStruct::expandUV(image.data() + dim * dim, dim);
+	benchStruct::expandUV(in.data() + dim * dim, dim);
 
 	{
-		benchStruct benchData(dim, taps);
-		//benchStruct benchData(dim, taps, std::thread::hardware_concurrency());
+		//benchStruct benchData(dim, taps);
+		benchStruct benchData(dim, taps, std::thread::hardware_concurrency());
+		//benchStruct benchData(dim, taps, &centripetalCatMullRomInterpolation, std::thread::hardware_concurrency());
 
 		benchData.setIOBuffers(in.data(), in.data(), out.data(), out.data());
 
 		std::vector<T> temp(dim * dim * 3 * 2);
 
-		SetProcessAffinityMask(GetCurrentProcess(), 0x30);
+		//SetProcessAffinityMask(GetCurrentProcess(), 0x30);
 		SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
 
 		// Main timing loop
@@ -104,13 +105,15 @@ static void bench_file(benchmark::State& s, char** input) {
 	AlignedVector<T> out(dim * dim * 2 * 3); 
 	
 	{
-		benchStruct benchData(dim, taps, &centripetalCatMullRomInterpolation);
+		benchStruct benchData(dim, taps);
+		//benchStruct benchData(dim, taps, std::thread::hardware_concurrency());
+		//benchStruct benchData(dim, taps, &centripetalCatMullRomInterpolation, std::thread::hardware_concurrency());
 
 		benchData.setIOBuffers(image.data(), image.data(), out.data(), out.data());
 
 		std::vector<T> temp(dim * dim * 3 * 2);
 
-		SetProcessAffinityMask(GetCurrentProcess(), 0x30);
+		//SetProcessAffinityMask(GetCurrentProcess(), 0x30);
 		SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
 
 		// Main timing loop
@@ -147,18 +150,20 @@ static void bench_file(benchmark::State& s, char** input) {
 
 #define FILEARGS ArgsProduct({ benchmark::CreateRange(1, 16, 2), { 10 } } )->MeasureProcessCPUTime()
 //#define TESTARGS ArgsProduct({ benchmark::CreateRange(1, 16, 2), { 7 } } )->MeasureProcessCPUTime()
-//#define TESTARGS ArgsProduct({ benchmark::CreateRange(1, 16, 2), benchmark::CreateDenseRange(0, 10, 1) } )->MeasureProcessCPUTime()
+#define TESTARGS ArgsProduct({ benchmark::CreateRange(1, 16, 2), benchmark::CreateDenseRange(7, 10, 1) } )->MeasureProcessCPUTime()
 
 int main(int argc, char** argv) {
 
-	benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench_file<frameDataCustom<uint8_t, float, false>>), &(argv[1]))->FILEARGS;
+	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench_file<frameDataCustom<uint8_t, float, false>>), &(argv[1]))->FILEARGS;
 
 	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench_file<frameData<uint8_t, float, false>>), &(argv[1]))->FILEARGS;
 	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench_file<frameData<uint8_t, float, true>>), &(argv[1]))->FILEARGS;
 	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench_file<frameData<uint8_t, int, false>>), &(argv[1]))->FILEARGS;
 	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench_file<frameData<uint8_t, int, true>>), &(argv[1]))->FILEARGS;
 
-	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench<frameData<uint8_t, float, false>>))->TESTARGS;
+	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench<frameDataCustom<uint8_t, float, false>>))->TESTARGS;
+	// 
+	benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench<frameData<uint8_t, float, false>>))->TESTARGS;
 	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench<frameData<uint8_t, float, true>>))->TESTARGS;
 	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench<frameData<uint8_t, int, false>>))->TESTARGS;
 	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench<frameData<uint8_t, int, true>>))->TESTARGS;
