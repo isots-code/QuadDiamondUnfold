@@ -12,12 +12,14 @@
 #include "vectormath_hyp.h"
 #include "vectormath_trig.h"
 
+#include "ThreadExecutor.h"
+
 template <typename T, typename U, bool NT>
-struct frameData {
+struct frameData : public ThreadedExecutor<T> {
 
 	using DataType = T;
 
-	frameData(int dim, int taps);
+	frameData(int dim, int taps, int numThreads = 1);
 
 	frameData() = delete;
 
@@ -26,6 +28,9 @@ struct frameData {
 	void processFrame(T* in, T* out);
 
 	std::vector<float> buildCoeffs(double x);
+
+	virtual void kernel(const int id);
+
 
 protected:
 
@@ -39,14 +44,17 @@ protected:
 };
 
 template <typename T, typename U, bool NT>
-frameData<T, U, NT>::frameData(int dim, int taps) : dim(dim), taps(taps) {
+frameData<T, U, NT>::frameData(int dim, int taps, int numThreads) : ThreadedExecutor<T>(dim, numThreads), dim(dim), taps(taps) {
 	lines.reserve(dim / 2);
 	for (int i = 0; i < dim / 2; i++)
 		lines.emplace_back(*this, i, dim);
 }
 
 template <typename T, typename U, bool NT>
-frameData<T, U, NT>::~frameData() { lines.clear(); }
+frameData<T, U, NT>::~frameData() { 
+	this->stop();
+	lines.clear(); 
+}
 
 template <typename T, typename U, bool NT>
 void frameData<T, U, NT>::processFrame(T* in, T* out) {
@@ -136,5 +144,14 @@ std::vector<float> frameData<T, U, NT>::buildCoeffs(double x) {
 	ret[-(taps / 2 - taps + 1)] = 1.0f;
 	return ret;
 }
+
+template <typename T, typename U, bool NT>
+//__declspec(noinline)
+//__forceinline
+void frameData<T, U, NT>::kernel(const int id) {
+	// expandUV
+	for (size_t i = id; i < dim / 2; i += this->numThreads) // topo e fundo por iteração
+		lines[i].processLine(this->input, this->output);
+};
 
 #include "lineData.h"

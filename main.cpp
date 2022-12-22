@@ -10,6 +10,8 @@
 #include "frameData.h"
 #include "AlignedVector.h"
 
+using namespace std::chrono;
+
 #define EXPAND_TEMPLATE_BENCH(...) #__VA_ARGS__, __VA_ARGS__
 
 template <class benchStruct>
@@ -31,18 +33,24 @@ static void bench(benchmark::State& s) {
 	AlignedVector<T> out(dim * dim * 2 * 3);
 
 	benchStruct benchData(dim, taps);
+	//benchStruct benchData(dim, taps, std::thread::hardware_concurrency());
+
+	benchData.setIOBuffers(in.data(), in.data(), out.data(), out.data());
 
 	uint8_t* temp = new uint8_t[dim * dim * 3];
 
 	SetProcessAffinityMask(GetCurrentProcess(), 0x30);
 	SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
-
+	
 	// Main timing loop
 	for (auto _ : s) {
-		s.PauseTiming();
-		std::memcpy(temp, in.data(), dim * dim * 3);
-		s.ResumeTiming();
-		benchData.processFrame(temp, out.data());
+		//s.PauseTiming();
+		//std::memcpy(temp, in.data(), dim * dim * 3);
+		//s.ResumeTiming();
+		//benchData.processFrame(temp, out.data());
+
+		benchData.fakeWriteInput();
+		benchData.fakeReadOutput();
 	}
 
 	SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS);
@@ -135,9 +143,9 @@ static void bench_file(benchmark::State& s, char** input) {
 	return;
 }
 
-//#define FILEARGS ArgsProduct({ benchmark::CreateRange(1, 16, 2), { 10 } } )
-#define TESTARGS ArgsProduct({ benchmark::CreateRange(1, 16, 2), { 7 } } )
-//#define TESTARGS ArgsProduct({ benchmark::CreateRange(1, 16, 2), benchmark::CreateDenseRange(0, 10, 1) } )
+//#define FILEARGS ArgsProduct({ benchmark::CreateRange(1, 16, 2), { 10 } } )->UseRealTime()
+#define TESTARGS ArgsProduct({ benchmark::CreateRange(1, 16, 2), { 7 } } )->MeasureProcessCPUTime()
+//#define TESTARGS ArgsProduct({ benchmark::CreateRange(1, 16, 2), benchmark::CreateDenseRange(0, 10, 1) } )->UseRealTime()
 
 int main(int argc, char** argv) {
 
