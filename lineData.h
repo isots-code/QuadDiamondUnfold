@@ -17,23 +17,25 @@ struct frameData<T, U, NT>::lineData {
 
 	~lineData();
 
-	void processLine(const T* in, T* out);
+	virtual void processLine(const T* in, T* out);
 
 protected:
-	__attribute__((noinline)) void gatherLines(const T* in);
+	void gatherLines(const T* in);
 
-	__attribute__((noinline)) void interpLines(void);
+	virtual void interpLines(void);
 
-	__attribute__((noinline)) void storeLines(T* out);
+	void storeLines(T* out);
 
 	void constructGatherLUT(void);
+
+public:
+	const int len;
+	const int width;
 
 protected:
 	const int y;
 	const int dim;
-	const int len;
 	const int taps;
-	const int width;
 	const int linePad;
 	const int paddedLen;
 	const int tapsOffset;
@@ -53,7 +55,7 @@ protected:
 
 template <typename T, typename U, bool NT>
 frameData<T, U, NT>::lineData::lineData(frameData& parent, int y, int width)
-	: y(y), dim(parent.dim), len(y * 4 + 2), taps(parent.taps), width(width), linePad(Vec8i().size()), paddedLen((len / linePad)* linePad + linePad),
+	: len(y * 4 + 2), width(width), y(y), dim(parent.dim), taps(parent.taps), linePad(Vec8i().size()), paddedLen((len / linePad)* linePad + linePad),
 	tapsOffset(-(taps / 2 - taps + 1)), outTopOffset(y* (width * 2)), outBotOffset((width - 1 - y)* (width * 2)), parent(parent) {
 	xIndexes.resize(paddedLen);
 	yIndexes.resize(paddedLen);

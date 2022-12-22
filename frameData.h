@@ -23,7 +23,7 @@ struct frameData : public ThreadedExecutor<T> {
 
 	frameData() = delete;
 
-	~frameData();
+	virtual ~frameData();
 
 	std::vector<float> buildCoeffs(double x);
 
@@ -55,9 +55,6 @@ frameData<T, U, NT>::~frameData() {
 
 template <typename T, typename U, bool NT>
 void frameData<T, U, NT>::expandUV(T* data, int dim) {
-
-	 // using namespace std::chrono;
-	 // auto start = high_resolution_clock::now(); // we check time b4 we wait for buffers as we just finished the kernel
 
 	struct wrapper {
 		T* data;
@@ -96,7 +93,6 @@ void frameData<T, U, NT>::expandUV(T* data, int dim) {
 
 	delete[] temp;
 
-	// std::printf("conv UV: %.3fms\n", (high_resolution_clock::now() - start).count() / 1e6);
 }
 
 template <typename T, typename U, bool NT>
@@ -107,10 +103,7 @@ std::vector<float> frameData<T, U, NT>::buildCoeffs(double x) {
 }
 
 template <typename T, typename U, bool NT>
-//__declspec(noinline)
-//__forceinline
 void frameData<T, U, NT>::kernel(const int id) {
-	// expandUV
 	for (size_t i = id; i < dim / 2; i += this->numThreads) // topo e fundo por iteração
 		lines[i].processLine(this->input, this->output);
 };

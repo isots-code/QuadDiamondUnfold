@@ -80,9 +80,9 @@ __attribute__((noinline)) Vec8i vecModCond(const Vec8i vec, const Vec8ib mask, c
 
 #pragma unroll(1)
 	for (auto i = 0; i < vec.size(); i++)
-		test[i] = mask_[i] ? test[i] : test[i] % div;
+		test[i] = mask_[i] ? test[i] % div : test[i];
 
 	Vec8i ret = Vec8i().load(test);
-	ret = if_add(ret < 0, ret, 2 * div);
+	ret = if_add(ret < 0, ret, div);
 	return ret;
 }

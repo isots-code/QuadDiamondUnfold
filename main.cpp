@@ -8,6 +8,7 @@
 #include <Windows.h>
 
 #include "frameData.h"
+#include "frameDataCustom.h"
 #include "AlignedVector.h"
 
 using namespace std::chrono;
@@ -103,7 +104,7 @@ static void bench_file(benchmark::State& s, char** input) {
 	AlignedVector<T> out(dim * dim * 2 * 3); 
 	
 	{
-		benchStruct benchData(dim, taps);
+		benchStruct benchData(dim, taps, &centripetalCatMullRomInterpolation);
 
 		benchData.setIOBuffers(image.data(), image.data(), out.data(), out.data());
 
@@ -150,7 +151,9 @@ static void bench_file(benchmark::State& s, char** input) {
 
 int main(int argc, char** argv) {
 
-	benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench_file<frameData<uint8_t, float, false>>), &(argv[1]))->FILEARGS;
+	benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench_file<frameDataCustom<uint8_t, float, false>>), &(argv[1]))->FILEARGS;
+
+	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench_file<frameData<uint8_t, float, false>>), &(argv[1]))->FILEARGS;
 	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench_file<frameData<uint8_t, float, true>>), &(argv[1]))->FILEARGS;
 	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench_file<frameData<uint8_t, int, false>>), &(argv[1]))->FILEARGS;
 	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench_file<frameData<uint8_t, int, true>>), &(argv[1]))->FILEARGS;
