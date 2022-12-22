@@ -32,30 +32,31 @@ static void bench(benchmark::State& s) {
 	// Variable for our results
 	AlignedVector<T> out(dim * dim * 2 * 3);
 
-	benchStruct benchData(dim, taps);
-	//benchStruct benchData(dim, taps, std::thread::hardware_concurrency());
+	{
+		benchStruct benchData(dim, taps);
+		//benchStruct benchData(dim, taps, std::thread::hardware_concurrency());
 
-	benchData.setIOBuffers(in.data(), in.data(), out.data(), out.data());
+		benchData.setIOBuffers(in.data(), in.data(), out.data(), out.data());
 
-	uint8_t* temp = new uint8_t[dim * dim * 3];
+		std::vector<T> temp(dim * dim * 3 * 2);
 
-	SetProcessAffinityMask(GetCurrentProcess(), 0x30);
-	SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
-	
-	// Main timing loop
-	for (auto _ : s) {
-		//s.PauseTiming();
-		//std::memcpy(temp, in.data(), dim * dim * 3);
-		//s.ResumeTiming();
-		//benchData.processFrame(temp, out.data());
+		SetProcessAffinityMask(GetCurrentProcess(), 0x30);
+		SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
 
-		benchData.fakeWriteInput();
-		benchData.fakeReadOutput();
+		// Main timing loop
+		for (auto _ : s) {
+			//s.PauseTiming();
+			//std::memcpy(temp.data(), in.data(), dim * dim * 3);
+			//s.ResumeTiming();
+			//benchData.processFrame(temp.data(), out.data());
+
+			benchData.fakeWriteInput();
+			benchData.fakeReadOutput();
+		}
+
+		SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS);
+
 	}
-
-	SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS);
-
-	delete[] temp;
 
 	s.SetBytesProcessed(uint64_t(s.iterations() * dim * dim * 2));
 	s.SetItemsProcessed(s.iterations());
@@ -94,38 +95,38 @@ static void bench_file(benchmark::State& s, char** input) {
 		s.SkipWithError("Error reading input file");
 		return;
 	}
-	uint8_t* image = new uint8_t[dim * dim * 3 * 2];
-	fread(image, dim * dim * 3, 1, file_ptr);
+
+	std::vector<T> image(dim * dim * 3 * 2);
+	fread(image.data(), dim * dim * 3, 1, file_ptr);
 	fclose(file_ptr);
 
 	// Variable for our results
-	AlignedVector<T> out(dim * dim * 2 * 3);
+	AlignedVector<T> out(dim * dim * 2 * 3); 
+	
+	{
+		benchStruct benchData(dim, taps);
 
-	auto benchData = new benchStruct(dim, taps);
+		benchData.setIOBuffers(image.data(), image.data(), out.data(), out.data());
 
-	benchData->setIOBuffers(image, image, out.data(), out.data());
+		std::vector<T> temp(dim * dim * 3 * 2);
 
-	uint8_t* temp = new uint8_t[dim * dim * 3 * 2];
+		SetProcessAffinityMask(GetCurrentProcess(), 0x30);
+		SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
 
-	SetProcessAffinityMask(GetCurrentProcess(), 0x30);
-	SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
+		// Main timing loop
+		for (auto _ : s) {
+			//s.PauseTiming();
+			//std::memcpy(temp.data(), image, dim * dim * 3);
+			//s.ResumeTiming();
+			//benchData.processFrame(temp.data(), out.data());
 
-	//// Main timing loop
-	//for (auto _ : s) {
-	//	s.PauseTiming();
-	//	std::memcpy(temp, image, dim * dim * 3);
-	//	s.ResumeTiming();
-	//	benchData.processFrame(temp, out.data());
-	//}
+			benchData.fakeWriteInput();
+			benchData.fakeReadOutput();
+		}
 
-	benchData->fakeWriteInput();
-	benchData->fakeReadOutput();
+		SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS);
 
-	delete benchData;
-
-	SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS);
-
-	delete[] temp;
+	}
 
 	s.SetBytesProcessed(uint64_t(s.iterations() * dim * dim * 2));
 	s.SetItemsProcessed(s.iterations());
@@ -146,7 +147,6 @@ static void bench_file(benchmark::State& s, char** input) {
 	fwrite(out.data(), 1, dim * dim * 2 * 3, file_ptr);
 	fclose(file_ptr);
 
-	delete[] image;
 	return;
 }
 
