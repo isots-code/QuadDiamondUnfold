@@ -32,6 +32,8 @@ static void bench(benchmark::State& s) {
 	// Variable for our results
 	AlignedVector<T> out(dim * dim * 2 * 3);
 
+	benchStruct::expandUV(image.data() + dim * dim, dim);
+
 	{
 		benchStruct benchData(dim, taps);
 		//benchStruct benchData(dim, taps, std::thread::hardware_concurrency());
@@ -45,11 +47,6 @@ static void bench(benchmark::State& s) {
 
 		// Main timing loop
 		for (auto _ : s) {
-			//s.PauseTiming();
-			//std::memcpy(temp.data(), in.data(), dim * dim * 3);
-			//s.ResumeTiming();
-			//benchData.processFrame(temp.data(), out.data());
-
 			benchData.fakeWriteInput();
 			benchData.fakeReadOutput();
 		}
@@ -100,6 +97,8 @@ static void bench_file(benchmark::State& s, char** input) {
 	fread(image.data(), dim * dim * 3, 1, file_ptr);
 	fclose(file_ptr);
 
+	benchStruct::expandUV(image.data() + dim * dim, dim);
+
 	// Variable for our results
 	AlignedVector<T> out(dim * dim * 2 * 3); 
 	
@@ -115,11 +114,6 @@ static void bench_file(benchmark::State& s, char** input) {
 
 		// Main timing loop
 		for (auto _ : s) {
-			//s.PauseTiming();
-			//std::memcpy(temp.data(), image, dim * dim * 3);
-			//s.ResumeTiming();
-			//benchData.processFrame(temp.data(), out.data());
-
 			benchData.fakeWriteInput();
 			benchData.fakeReadOutput();
 		}
