@@ -108,7 +108,7 @@ std::vector<float> frameData<T>::buildCoeffs(double x) {
 
 template <typename T>
 void frameData<T>::kernel(const int id) {
-	for (size_t i = id; i < dim / 2; i += this->numThreads) // topo e fundo por iteração
+	for (int i = id; i < dim / 2; i += this->numThreads) // topo e fundo por iteração
 		lines[i].processLine(this->input, this->output);
 };
 

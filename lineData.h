@@ -15,7 +15,7 @@ struct frameData<T>::lineData {
 
 	lineData() = delete;
 
-	~lineData();
+	virtual ~lineData();
 
 	virtual void processLine(const T* in, T* out);
 

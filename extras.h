@@ -25,7 +25,7 @@ void store2out(const int* in, T* out, int length);
 template <>
 void store2out(const int* in, uint8_t* out, int length) {
 	int i = 0;
-	for (; i < length - 31; i += 32) {
+	for (; i < length - Vec32uc::size() - 1; i += Vec32uc::size()) {
 		Vec8i a = Vec8i().load(in + i);
 		Vec8i b = Vec8i().load(in + i + 8);
 		Vec8i c = Vec8i().load(in + i + 16);

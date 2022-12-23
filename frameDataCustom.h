@@ -4,7 +4,7 @@
 #include "extras.h"
 
 template <typename T>
-struct frameDataCustom : public frameData<T> {
+struct frameDataCustom final : public frameData<T> {
 
     struct lineDataCustom;
 
@@ -15,11 +15,11 @@ struct frameDataCustom : public frameData<T> {
 
     frameDataCustom() = delete;
 
-    ~frameDataCustom();
+    virtual ~frameDataCustom() final;
 
     void kernel(const int id) final;
 
-    struct lineDataCustom : frameData<T>::lineData {
+    struct lineDataCustom final : frameData<T>::lineData {
 
         lineDataCustom(frameDataCustom& parent, int y, int width);
 
@@ -55,7 +55,7 @@ frameDataCustom<T>::~frameDataCustom() {
 
 template <typename T>
 void frameDataCustom<T>::kernel(const int id) {
-    for (size_t i = id; i < dim / 2; i += this->numThreads) // topo e fundo por iteração
+    for (int i = id; i < this->dim / 2; i += this->numThreads) // topo e fundo por iteração
         linesCustom[i].processLine(this->input, this->output);
 };
 
@@ -64,25 +64,25 @@ frameDataCustom<T>::lineDataCustom::lineDataCustom(frameDataCustom& parent, int 
 
 template <typename T>
 void frameDataCustom<T>::lineDataCustom::processLine(const T* in, T* out) {
-    float inTopArray[3][paddedLen + taps];
-    float inBotArray[3][paddedLen + taps];
-    int outTopArray[3][width * 2];
-    int outBotArray[3][width * 2];
-    inTopLine = { inTopArray[0] + tapsOffset, inTopArray[1] + tapsOffset, inTopArray[2] + tapsOffset };
-    inBotLine = { inBotArray[0] + tapsOffset, inBotArray[1] + tapsOffset, inBotArray[2] + tapsOffset };
-    outTopLine = { outTopArray[0] + tapsOffset, outTopArray[1] + tapsOffset, outTopArray[2] + tapsOffset };
-    outBotLine = { outBotArray[0] + tapsOffset, outBotArray[1] + tapsOffset, outBotArray[2] + tapsOffset };
-    gatherLines(in);
+    float inTopArray[3][this->paddedLen + this->taps];
+    float inBotArray[3][this->paddedLen + this->taps];
+    int outTopArray[3][this->width * 2];
+    int outBotArray[3][this->width * 2];
+    this->inTopLine = { inTopArray[0] + this->tapsOffset, inTopArray[1] + this->tapsOffset, inTopArray[2] + this->tapsOffset };
+    this->inBotLine = { inBotArray[0] + this->tapsOffset, inBotArray[1] + this->tapsOffset, inBotArray[2] + this->tapsOffset };
+    this->outTopLine = { outTopArray[0] + this->tapsOffset, outTopArray[1] + this->tapsOffset, outTopArray[2] + this->tapsOffset };
+    this->outBotLine = { outBotArray[0] + this->tapsOffset, outBotArray[1] + this->tapsOffset, outBotArray[2] + this->tapsOffset };
+    this->gatherLines(in);
     interpLines();
-    storeLines(out);
+    this->storeLines(out);
 }
 
 template <typename T>
 void frameDataCustom<T>::lineDataCustom::interpLines(void) {
-    for (int i = 0; i < width * 2; i += Vec8f::size()) {
+    for (int i = 0; i < this->width * 2; i += Vec8f::size()) {
         for (int component = 0; component < 3; component++) {
-            parent.interp(*this, i, inTopLine[component], outTopLine[component]);
-            parent.interp(*this, i, inBotLine[component], outBotLine[component]);
+            parent.interp(*this, i, this->inTopLine[component], this->outTopLine[component]);
+            parent.interp(*this, i, this->inBotLine[component], this->outBotLine[component]);
         }
     }
 }
