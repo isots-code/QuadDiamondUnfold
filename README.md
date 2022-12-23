@@ -6,19 +6,25 @@ This is a side project of mine to rework my bachelor's thesis final project and 
 
 The initial idea was to make this work with images, video and possibily 360º video for demonstration. We got stuck on images.
 
-The main purpose of this is to, in real time, do a sort of unfold of a video and make it viewable.
+The main purpose of this is to, in real time, do a sort of unfold of a video and make it viewable. Below is an example of the original image and the transformation. 
+
+![Original](/media/unfolded.png "Original")
+
+![Folded](/media/folded.png "Folded")
+
+This project is about reversing the transformation so as to be viewed as the original format.
 
 Later, i will add code to do the transformation (but not a fast one) so you can try it on your videos.
 
 This also is for me to get a bit more hands on with C++ and SIMD in x86 since my main language till a few months ago was embedded C.
 
-This depends on Agner Fog's VCL library [Link: https://github.com/vectorclass/version2]
+This depends on ![Agner Fog's VCL library](https://github.com/vectorclass/version2)
 
-For testing, it depends on Google Benchmark [Link: https://github.com/google/benchmark]
+For testing, it depends on ![Google Benchmark](https://github.com/google/benchmark)
 
-The AlignedVector file comes from here on StackOverflow [link: https://stackoverflow.com/a/70994249]
+The AlignedVector file comes from ![here on StackOverflow](link: https://stackoverflow.com/a/70994249)
 
-If you come across this and saya its poorly organized, i'll take help in writing a better README, making a VCL plugin out of this and CMake.
+If you come across this and say it's poorly organized, i'll gladly take help in writing a better README, making a VLC plugin out of this and how to use a build system for this.
 For now, its just a bunch of source files in a git.
 
 # Building
