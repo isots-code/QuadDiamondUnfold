@@ -8,8 +8,10 @@ The initial idea was to make this work with images, video and possibily 360º vi
 
 The main purpose of this is to, in real time, do a sort of unfold of a video and make it viewable. Below is an example of the original image and the transformation. 
 
+### Original
 ![Original](/media/unfolded.png "Original")
 
+### Folded
 ![Folded](/media/folded.png "Folded")
 
 This project is about reversing the transformation so as to be viewed as the original format.
