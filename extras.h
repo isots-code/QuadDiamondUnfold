@@ -21,15 +21,6 @@ Vec8f gather(const T* in, const Vec8i index) {
 	return to_float(mask & _mm256_i32gather_epi32(in, index, sizeof(*in)));
 }
 
-template <>
-Vec8f gather(const float* in, const Vec8i index) {
-	return _mm256_i32gather_ps(in, index, sizeof(*in));
-}
-
-template <typename T>
-void store2out(const int* in, T* out, int length);
-
-template <>
 void store2out(const int* in, bits8_t* out, int length) {
 	int i = 0;
 	for (; i < length - Vec32uc::size() - 1; i += Vec32uc::size()) {
@@ -50,7 +41,6 @@ void store2out(const int* in, bits8_t* out, int length) {
 	return;
 }
 
-template <>
 void store2out(const int* in, bits10_t* out, int length) {
 	int i = 0;
 	for (; i < length - Vec16us::size() - 1; i += Vec16us::size()) {
@@ -67,7 +57,6 @@ void store2out(const int* in, bits10_t* out, int length) {
 	return;
 }
 
-template <>
 void store2out(const int* in, bits12_t* out, int length) {
 	int i = 0;
 	for (; i < length - Vec16us::size() - 1; i += Vec16us::size()) {
@@ -84,7 +73,6 @@ void store2out(const int* in, bits12_t* out, int length) {
 	return;
 }
 
-template <>
 void store2out(const int* in, bits14_t* out, int length) {
 	int i = 0;
 	for (; i < length - Vec16us::size() - 1; i += Vec16us::size()) {
@@ -101,7 +89,6 @@ void store2out(const int* in, bits14_t* out, int length) {
 	return;
 }
 
-template <>
 void store2out(const int* in, bits16_t* out, int length) {
 	int i = 0;
 	for (; i < length - Vec16us::size() - 1; i += Vec16us::size()) {
@@ -118,7 +105,8 @@ void store2out(const int* in, bits16_t* out, int length) {
 	return;
 }
 
-__attribute__((noinline)) Vec8i vecModCond(const Vec8i vec, const Vec8ib mask, const int div) {
+//__attribute__((noinline)) 
+Vec8i vecModCond(const Vec8i vec, const Vec8ib mask, const int div) {
 	int test[Vec8i::size()];
 	vec.store(test);
 	volatile int mask_[Vec8ib::size()];
