@@ -22,7 +22,7 @@ This also is for me to get a bit more hands on with C++ and SIMD in x86 since my
 
 This depends on [Agner Fog's VCL library](https://github.com/vectorclass/version2)
 
-For testing, it depends on [Google Benchmark](https://github.com/google/benchmark)
+For testing performance, it depends on [Google Benchmark](https://github.com/google/benchmark)
 
 The AlignedVector file comes from [here on StackOverflow](https://stackoverflow.com/a/70994249)
 
