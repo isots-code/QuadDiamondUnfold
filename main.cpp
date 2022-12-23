@@ -148,9 +148,9 @@ static void bench_file(benchmark::State& s, char** input) {
 	return;
 }
 
-#define FILEARGS ArgsProduct({ benchmark::CreateRange(1, 16, 2), { 10 } } )->MeasureProcessCPUTime()
-//#define TESTARGS ArgsProduct({ benchmark::CreateRange(1, 16, 2), { 7 } } )->MeasureProcessCPUTime()
-#define TESTARGS ArgsProduct({ benchmark::CreateRange(1, 16, 2), benchmark::CreateDenseRange(7, 10, 1) } )->MeasureProcessCPUTime()
+#define FILEARGS ArgsProduct({ benchmark::CreateRange(1, 16, 2), { 10 } } )->UseRealTime()
+//#define TESTARGS ArgsProduct({ benchmark::CreateRange(1, 16, 2), { 7 } } )->UseRealTime()
+#define TESTARGS ArgsProduct({ benchmark::CreateRange(1, 16, 2), benchmark::CreateDenseRange(5, 10, 1) } )->UseRealTime()
 
 int main(int argc, char** argv) {
 
