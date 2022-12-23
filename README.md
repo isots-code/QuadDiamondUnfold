@@ -20,11 +20,11 @@ Later, i will add code to do the transformation (but not a fast one) so you can 
 
 This also is for me to get a bit more hands on with C++ and SIMD in x86 since my main language till a few months ago was embedded C.
 
-This depends on ![Agner Fog's VCL library](https://github.com/vectorclass/version2)
+This depends on [Agner Fog's VCL library](https://github.com/vectorclass/version2)
 
-For testing, it depends on ![Google Benchmark](https://github.com/google/benchmark)
+For testing, it depends on [Google Benchmark](https://github.com/google/benchmark)
 
-The AlignedVector file comes from ![here on StackOverflow](link: https://stackoverflow.com/a/70994249)
+The AlignedVector file comes from [here on StackOverflow](https://stackoverflow.com/a/70994249)
 
 If you come across this and say it's poorly organized, i'll gladly take help in writing a better README, making a VLC plugin out of this and how to use a build system for this.
 For now, its just a bunch of source files in a git.
