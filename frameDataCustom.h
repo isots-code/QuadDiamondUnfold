@@ -10,7 +10,8 @@ struct frameDataCustom : public frameData<T> {
 
     typedef void (*interpFunc_t)(frameDataCustom::lineDataCustom& self, const int x, const float* __restrict in, int* __restrict out);
 
-    frameDataCustom(int dim, int taps, interpFunc_t interp, int numThreads = 1);
+    frameDataCustom(int dim, int taps, interpFunc_t interp, int numThreads);
+    frameDataCustom(int dim, int taps, interpFunc_t interp);
 
     frameDataCustom() = delete;
 
@@ -36,13 +37,15 @@ private:
     std::vector<lineDataCustom> linesCustom;
 
 };
-
 template <typename T>
 frameDataCustom<T>::frameDataCustom(int dim, int taps, interpFunc_t interp, int numThreads) : frameData<T>(dim, taps, numThreads), interp(interp) {
     linesCustom.reserve(dim / 2);
     for (int i = 0; i < dim / 2; i++)
         linesCustom.emplace_back(*this, i, dim);
 }
+
+template <typename T>
+frameDataCustom<T>::frameDataCustom(int dim, int taps, interpFunc_t interp) : frameDataCustom<T>(dim, taps, interp, std::thread::hardware_concurrency()) { }
 
 template <typename T>
 frameDataCustom<T>::~frameDataCustom() {

@@ -19,7 +19,8 @@ struct frameData : public ThreadedExecutor<T> {
 
 	using DataType = T;
 
-	frameData(int dim, int taps, int numThreads = 1);
+	frameData(int dim, int taps, int numThread);
+	frameData(int dim, int taps);
 
 	frameData() = delete;
 
@@ -46,6 +47,9 @@ frameData<T>::frameData(int dim, int taps, int numThreads) : ThreadedExecutor<T>
 	for (int i = 0; i < dim / 2; i++)
 		lines.emplace_back(*this, i, dim);
 }
+
+template <typename T>
+frameData<T>::frameData(int dim, int taps) : frameData<T>(dim, taps, std::thread::hardware_concurrency()) { }
 
 template <typename T>
 frameData<T>::~frameData() { 
