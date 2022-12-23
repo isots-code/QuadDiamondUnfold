@@ -55,7 +55,7 @@ protected:
 
 template <typename T, typename U, bool NT>
 frameData<T, U, NT>::lineData::lineData(frameData& parent, int y, int width)
-	: len(y * 4 + 2), width(width), y(y), dim(parent.dim), taps(parent.taps), linePad(Vec8i().size()), paddedLen((len / linePad)* linePad + linePad),
+	: len(y * 4 + 2), width(width), y(y), dim(parent.dim), taps(parent.taps), linePad(Vec8i::size()), paddedLen((len / linePad)* linePad + linePad),
 	tapsOffset(-(taps / 2 - taps + 1)), outTopOffset(y* (width * 2)), outBotOffset((width - 1 - y)* (width * 2)), parent(parent) {
 	xIndexes.resize(paddedLen);
 	yIndexes.resize(paddedLen);
@@ -93,7 +93,7 @@ void frameData<T, U, NT>::lineData::processLine(const T* in, T* out) {
 
 template <typename T, typename U, bool NT>
 void frameData<T, U, NT>::lineData::gatherLines(const T* in) {
-	for (unsigned long long i = 0; i < xIndexes.size(); i += Vec8us().size()) {
+	for (unsigned long long i = 0; i < xIndexes.size(); i += Vec8us::size()) {
 
 		Vec8i x = extend(Vec8us().load(&(xIndexes[i])));
 		Vec8i y = extend(Vec8us().load(&(yIndexes[i])));
@@ -125,7 +125,7 @@ void frameData<T, U, NT>::lineData::interpLines(void) {
 
 	const int Lj = len / 2;
 
-	for (int i = 0; i < width; i += Vec8f().size()) {
+	for (int i = 0; i < width; i += Vec8f::size()) {
 
 		Vec8f sumTR[3] = { Vec8f(0), Vec8f(0) , Vec8f(0) },
 			sumTL[3] = { Vec8f(0), Vec8f(0) , Vec8f(0) },

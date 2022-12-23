@@ -76,7 +76,7 @@ void frameDataCustom<T, U, NT>::lineDataCustom::processLine(const T* in, T* out)
 
 template <typename T, typename U, bool NT>
 void frameDataCustom<T, U, NT>::lineDataCustom::interpLines(void) {
-    for (int i = 0; i < width * 2; i += Vec8f().size()) {
+    for (int i = 0; i < width * 2; i += Vec8f::size()) {
         for (int component = 0; component < 3; component++) {
             parent.interp(*this, i, inTopLine[component], outTopLine[component]);
             parent.interp(*this, i, inBotLine[component], outBotLine[component]);

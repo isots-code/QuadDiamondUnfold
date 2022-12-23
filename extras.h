@@ -73,13 +73,13 @@ void store2out(const int* in, uint8_t* out, int length) {
 }
 
 __attribute__((noinline)) Vec8i vecModCond(const Vec8i vec, const Vec8ib mask, const int div) {
-	int test[vec.size()];
+	int test[Vec8i::size()];
 	vec.store(test);
-	volatile int mask_[mask.size()];
+	volatile int mask_[Vec8ib::size()];
 	mask.store((int*)mask_);
 
 #pragma unroll(1)
-	for (auto i = 0; i < vec.size(); i++)
+	for (auto i = 0; i < Vec8i::size(); i++)
 		test[i] = mask_[i] ? test[i] % div : test[i];
 
 	Vec8i ret = Vec8i().load(test);
