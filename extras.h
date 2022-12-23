@@ -86,3 +86,4 @@ __attribute__((noinline)) Vec8i vecModCond(const Vec8i vec, const Vec8ib mask, c
 	ret = if_add(ret < 0, ret, div);
 	return ret;
 }
+

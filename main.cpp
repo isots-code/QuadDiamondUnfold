@@ -37,8 +37,8 @@ static void bench(benchmark::State& s) {
 
 	{
 		//benchStruct benchData(dim, taps);
-		benchStruct benchData(dim, taps, std::thread::hardware_concurrency());
-		//benchStruct benchData(dim, taps, &centripetalCatMullRomInterpolation, std::thread::hardware_concurrency());
+		//benchStruct benchData(dim, taps, std::thread::hardware_concurrency());
+		benchStruct benchData(dim, taps, &centripetalCatMullRomInterpolation, std::thread::hardware_concurrency());
 
 		benchData.setIOBuffers(in.data(), in.data(), out.data(), out.data());
 
@@ -105,9 +105,9 @@ static void bench_file(benchmark::State& s, char** input) {
 	AlignedVector<T> out(dim * dim * 2 * 3); 
 	
 	{
-		benchStruct benchData(dim, taps);
+		//benchStruct benchData(dim, taps);
 		//benchStruct benchData(dim, taps, std::thread::hardware_concurrency());
-		//benchStruct benchData(dim, taps, &centripetalCatMullRomInterpolation, std::thread::hardware_concurrency());
+		benchStruct benchData(dim, taps, &centripetalCatMullRomInterpolation, std::thread::hardware_concurrency());
 
 		benchData.setIOBuffers(image.data(), image.data(), out.data(), out.data());
 
@@ -150,11 +150,11 @@ static void bench_file(benchmark::State& s, char** input) {
 
 #define FILEARGS ArgsProduct({ benchmark::CreateRange(1, 16, 2), { 10 } } )->UseRealTime()
 //#define TESTARGS ArgsProduct({ benchmark::CreateRange(1, 16, 2), { 7 } } )->UseRealTime()
-#define TESTARGS ArgsProduct({ benchmark::CreateRange(1, 16, 2), benchmark::CreateDenseRange(5, 10, 1) } )->UseRealTime()
+#define TESTARGS ArgsProduct({ benchmark::CreateRange(1, 16, 2), benchmark::CreateDenseRange(7, 10, 1) } )->UseRealTime()
 
 int main(int argc, char** argv) {
 
-	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench_file<frameDataCustom<uint8_t, float, false>>), &(argv[1]))->FILEARGS;
+	benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench_file<frameDataCustom<uint8_t, float, false>>), &(argv[1]))->FILEARGS;
 
 	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench_file<frameData<uint8_t, float, false>>), &(argv[1]))->FILEARGS;
 	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench_file<frameData<uint8_t, float, true>>), &(argv[1]))->FILEARGS;
@@ -163,7 +163,7 @@ int main(int argc, char** argv) {
 
 	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench<frameDataCustom<uint8_t, float, false>>))->TESTARGS;
 	// 
-	benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench<frameData<uint8_t, float, false>>))->TESTARGS;
+	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench<frameData<uint8_t, float, false>>))->TESTARGS;
 	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench<frameData<uint8_t, float, true>>))->TESTARGS;
 	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench<frameData<uint8_t, int, false>>))->TESTARGS;
 	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench<frameData<uint8_t, int, true>>))->TESTARGS;

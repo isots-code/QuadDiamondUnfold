@@ -116,14 +116,16 @@ void centripetalCatMullRomInterpolation(typename frameDataCustom<T, U, NT>::line
         Vec8f t23 = approx_rsqrt(approx_rsqrt((x3 - x2) * (x3 - x2) + 1.0));
         Vec8f m1 = mul_add((x1 - x0) / t01 - (x2 - x0) / (t01 + t12), t12, x2 - x1);
         Vec8f m2 = mul_add((x3 - x2) / t23 - (x3 - x1) / (t12 + t23), t12, x2 - x1);
-        return mul_add(nmul_add(nmul_sub(nmul_add(2.0, x2 - x1, m1 + m2), x, 3.0 * (x2 - x1)) + mul_add(2.0, m1, m2), x, m1), x, x1);
-
+        Vec8f m12 = m1 + m2, x1_2 = x1 - x2;
+        return mul_add(mul_add(2.0f, x1_2, m12) * x * x, x, mul_add(mul_sub(-3.0f, x1_2, m1 + m12) * x, x, mul_add(m1, x, x1)));
+        
         //Vec8f t01 = pow_ratio((x1 - x0) * (x1 - x0) + 1.0, 1, 4);
         //Vec8f t12 = pow_ratio((x2 - x1) * (x2 - x1) + 1.0, 1, 4);
         //Vec8f t23 = pow_ratio((x3 - x2) * (x3 - x2) + 1.0, 1, 4);
         //Vec8f m1 = (x2 - x1 + t12 * ((x1 - x0) / t01 - (x2 - x0) / (t01 + t12)));
         //Vec8f m2 = (x2 - x1 + t12 * ((x3 - x2) / t23 - (x3 - x1) / (t12 + t23)));
         //return (x1 + x * (m1 - x * (2.0 * m1 + m2 + 3.0 * x1 - 3.0 * x2 - x * (m1 + m2 + 2.0 * x1 - 2.0 * x2))));
+        //return (2.0f * (x1 - x2) + m1 + m2) * x * x * x + (-3.0f * (x1 - x2) - m1 - m1 - m2) * x * x + (m1) * x + (x1);
 
     }(x_1, x0, x1, x2, x).store(out + i);
 }
