@@ -28,7 +28,7 @@ static void bench(benchmark::State& s) {
 
 	// Create a vector of random numbers
 	std::vector<T> in(dim * dim * 3);
-	std::generate(begin(in), end(in), [] { return rand() % 255; });
+	std::generate(begin(in), end(in), [] { return T{ .i = static_cast<decltype(T::i)>(rand() % 255) }; });
 
 	// Variable for our results
 	AlignedVector<T> out(dim * dim * 2 * 3);
@@ -37,8 +37,8 @@ static void bench(benchmark::State& s) {
 
 	{
 		//benchStruct benchData(dim, taps, 1);
-		//benchStruct benchData(dim, taps);
-		benchStruct benchData(dim, taps, &centripetalCatMullRomInterpolation);
+		benchStruct benchData(dim, taps);
+		//benchStruct benchData(dim, taps, &centripetalCatMullRomInterpolation);
 
 		benchData.setIOBuffers(in.data(), in.data(), out.data(), out.data());
 
@@ -154,13 +154,13 @@ static void bench_file(benchmark::State& s, char** input) {
 
 int main(int argc, char** argv) {
 
-	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench_file<frameDataCustom<uint8_t>>), &(argv[1]))->FILEARGS;
-	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench_file<frameData<uint8_t>>), &(argv[1]))->FILEARGS;
+	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench_file<frameDataCustom<bits8_t>>), &(argv[1]))->FILEARGS;
+	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench_file<frameData<bits8_t>>), &(argv[1]))->FILEARGS;
 
-	benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench<frameDataCustom<uint8_t>>))->TESTARGS;
-	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench<frameData<uint8_t>>))->TESTARGS;
+	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench<frameDataCustom<bits8_t>>))->TESTARGS;
+	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench<frameData<bits8_t>>))->TESTARGS;
 
-	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench<frameData<uint16_t>>))->TESTARGS;
+	benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench<frameData<bits14_t>>))->TESTARGS;
 
 	//these entries are from BENCHMARK_MAIN
 	benchmark::Initialize(&argc, argv);
