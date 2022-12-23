@@ -26,6 +26,8 @@ For testing performance, it depends on [Google Benchmark](https://github.com/goo
 
 The AlignedVector file comes from [here on StackOverflow](https://stackoverflow.com/a/70994249)
 
+Centripetal Catmull-Rom interpolation code obtained [from here](https://qroph.github.io/2018/07/30/smooth-paths-using-catmull-rom-splines.html)
+
 If you come across this and say it's poorly organized, i'll gladly take help in writing a better README, making a VLC plugin out of this and how to use a build system for this.
 For now, its just a bunch of source files in a git.
 
