@@ -14,7 +14,7 @@
 
 #include "ThreadExecutor.h"
 
-template <typename T, typename U, bool NT>
+template <typename T>
 struct frameData : public ThreadedExecutor<T> {
 
 	using DataType = T;
@@ -40,21 +40,21 @@ protected:
 	std::vector<lineData> lines;
 };
 
-template <typename T, typename U, bool NT>
-frameData<T, U, NT>::frameData(int dim, int taps, int numThreads) : ThreadedExecutor<T>(dim, numThreads), dim(dim), taps(taps) {
+template <typename T>
+frameData<T>::frameData(int dim, int taps, int numThreads) : ThreadedExecutor<T>(dim, numThreads), dim(dim), taps(taps) {
 	lines.reserve(dim / 2);
 	for (int i = 0; i < dim / 2; i++)
 		lines.emplace_back(*this, i, dim);
 }
 
-template <typename T, typename U, bool NT>
-frameData<T, U, NT>::~frameData() { 
+template <typename T>
+frameData<T>::~frameData() { 
 	this->stop();
 	lines.clear(); 
 }
 
-template <typename T, typename U, bool NT>
-void frameData<T, U, NT>::expandUV(T* data, int dim) {
+template <typename T>
+void frameData<T>::expandUV(T* data, int dim) {
 
 	struct wrapper {
 		T* data;
@@ -95,15 +95,15 @@ void frameData<T, U, NT>::expandUV(T* data, int dim) {
 
 }
 
-template <typename T, typename U, bool NT>
-std::vector<float> frameData<T, U, NT>::buildCoeffs(double x) {
+template <typename T>
+std::vector<float> frameData<T>::buildCoeffs(double x) {
 	std::vector<float> ret(taps, 0.0f);
 	ret[-(taps / 2 - taps + 1)] = 1.0f;
 	return ret;
 }
 
-template <typename T, typename U, bool NT>
-void frameData<T, U, NT>::kernel(const int id) {
+template <typename T>
+void frameData<T>::kernel(const int id) {
 	for (size_t i = id; i < dim / 2; i += this->numThreads) // topo e fundo por iteração
 		lines[i].processLine(this->input, this->output);
 };

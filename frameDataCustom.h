@@ -3,12 +3,12 @@
 #include "frameData.h"
 #include "extras.h"
 
-template <typename T, typename U, bool NT>
-struct frameDataCustom : public frameData<T, U, NT> {
+template <typename T>
+struct frameDataCustom : public frameData<T> {
 
     struct lineDataCustom;
 
-    typedef void (*interpFunc_t)(frameDataCustom::lineDataCustom& self, const int x, const float* __restrict in, float* __restrict out);
+    typedef void (*interpFunc_t)(frameDataCustom::lineDataCustom& self, const int x, const float* __restrict in, int* __restrict out);
 
     frameDataCustom(int dim, int taps, interpFunc_t interp, int numThreads = 1);
 
@@ -18,7 +18,7 @@ struct frameDataCustom : public frameData<T, U, NT> {
 
     void kernel(const int id) final;
 
-    struct lineDataCustom : frameData<T, U, NT>::lineData {
+    struct lineDataCustom : frameData<T>::lineData {
 
         lineDataCustom(frameDataCustom& parent, int y, int width);
 
@@ -37,34 +37,34 @@ private:
 
 };
 
-template <typename T, typename U, bool NT>
-frameDataCustom<T, U, NT>::frameDataCustom(int dim, int taps, interpFunc_t interp, int numThreads) : frameData<T, U, NT>(dim, taps, numThreads), interp(interp) {
+template <typename T>
+frameDataCustom<T>::frameDataCustom(int dim, int taps, interpFunc_t interp, int numThreads) : frameData<T>(dim, taps, numThreads), interp(interp) {
     linesCustom.reserve(dim / 2);
     for (int i = 0; i < dim / 2; i++)
         linesCustom.emplace_back(*this, i, dim);
 }
 
-template <typename T, typename U, bool NT>
-frameDataCustom<T, U, NT>::~frameDataCustom() {
+template <typename T>
+frameDataCustom<T>::~frameDataCustom() {
     this->stop();
     linesCustom.clear();
 }
 
-template <typename T, typename U, bool NT>
-void frameDataCustom<T, U, NT>::kernel(const int id) {
+template <typename T>
+void frameDataCustom<T>::kernel(const int id) {
     for (size_t i = id; i < dim / 2; i += this->numThreads) // topo e fundo por iteração
         linesCustom[i].processLine(this->input, this->output);
 };
 
-template <typename T, typename U, bool NT>
-frameDataCustom<T, U, NT>::lineDataCustom::lineDataCustom(frameDataCustom& parent, int y, int width) : frameData<T, U, NT>::lineData(parent, y, width), parent(parent) {}
+template <typename T>
+frameDataCustom<T>::lineDataCustom::lineDataCustom(frameDataCustom& parent, int y, int width) : frameData<T>::lineData(parent, y, width), parent(parent) {}
 
-template <typename T, typename U, bool NT>
-void frameDataCustom<T, U, NT>::lineDataCustom::processLine(const T* in, T* out) {
+template <typename T>
+void frameDataCustom<T>::lineDataCustom::processLine(const T* in, T* out) {
     float inTopArray[3][paddedLen + taps];
     float inBotArray[3][paddedLen + taps];
-    U outTopArray[3][width * 2];
-    U outBotArray[3][width * 2];
+    int outTopArray[3][width * 2];
+    int outBotArray[3][width * 2];
     inTopLine = { inTopArray[0] + tapsOffset, inTopArray[1] + tapsOffset, inTopArray[2] + tapsOffset };
     inBotLine = { inBotArray[0] + tapsOffset, inBotArray[1] + tapsOffset, inBotArray[2] + tapsOffset };
     outTopLine = { outTopArray[0] + tapsOffset, outTopArray[1] + tapsOffset, outTopArray[2] + tapsOffset };
@@ -74,8 +74,8 @@ void frameDataCustom<T, U, NT>::lineDataCustom::processLine(const T* in, T* out)
     storeLines(out);
 }
 
-template <typename T, typename U, bool NT>
-void frameDataCustom<T, U, NT>::lineDataCustom::interpLines(void) {
+template <typename T>
+void frameDataCustom<T>::lineDataCustom::interpLines(void) {
     for (int i = 0; i < width * 2; i += Vec8f::size()) {
         for (int component = 0; component < 3; component++) {
             parent.interp(*this, i, inTopLine[component], outTopLine[component]);
@@ -85,7 +85,7 @@ void frameDataCustom<T, U, NT>::lineDataCustom::interpLines(void) {
 }
 
 template <typename T = uint8_t, typename U = float, bool NT = false>
-void centripetalCatMullRomInterpolation(typename frameDataCustom<T, U, NT>::lineDataCustom& self, const int i, const float* __restrict in, float* __restrict out) {
+void centripetalCatMullRomInterpolation(typename frameDataCustom<T>::lineDataCustom& self, const int i, const float* __restrict in, int* __restrict out) {
 
     const Vec8f Dj((self.len / 2) / (double)self.width);
     Vec8f x = Dj * (i + Vec8f(0, 1, 2, 3, 4, 5, 6, 7));
@@ -109,7 +109,7 @@ void centripetalCatMullRomInterpolation(typename frameDataCustom<T, U, NT>::line
     Vec8f x1 = gather(in, ret1);
     Vec8f x2 = gather(in, ret2);
 
-    [](Vec8f x0, Vec8f x1, Vec8f x2, Vec8f x3, Vec8f x) -> Vec8f {
+    Vec8f res = [](Vec8f x0, Vec8f x1, Vec8f x2, Vec8f x3, Vec8f x) -> Vec8f {
 
         Vec8f t01 = approx_rsqrt(approx_rsqrt((x1 - x0) * (x1 - x0) + 1.0));
         Vec8f t12 = approx_rsqrt(approx_rsqrt((x2 - x1) * (x2 - x1) + 1.0));
@@ -127,5 +127,6 @@ void centripetalCatMullRomInterpolation(typename frameDataCustom<T, U, NT>::line
         //return (x1 + x * (m1 - x * (2.0 * m1 + m2 + 3.0 * x1 - 3.0 * x2 - x * (m1 + m2 + 2.0 * x1 - 2.0 * x2))));
         //return (2.0f * (x1 - x2) + m1 + m2) * x * x * x + (-3.0f * (x1 - x2) - m1 - m1 - m2) * x * x + (m1) * x + (x1);
 
-    }(x_1, x0, x1, x2, x).store(out + i);
+    }(x_1, x0, x1, x2, x);
+    roundi(res).store(out + i);
 }

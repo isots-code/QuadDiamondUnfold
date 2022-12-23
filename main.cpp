@@ -154,19 +154,11 @@ static void bench_file(benchmark::State& s, char** input) {
 
 int main(int argc, char** argv) {
 
-	benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench_file<frameDataCustom<uint8_t, float, false>>), &(argv[1]))->FILEARGS;
+	benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench_file<frameDataCustom<uint8_t>>), &(argv[1]))->FILEARGS;
+	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench_file<frameData<uint8_t>>), &(argv[1]))->FILEARGS;
 
-	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench_file<frameData<uint8_t, float, false>>), &(argv[1]))->FILEARGS;
-	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench_file<frameData<uint8_t, float, true>>), &(argv[1]))->FILEARGS;
-	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench_file<frameData<uint8_t, int, false>>), &(argv[1]))->FILEARGS;
-	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench_file<frameData<uint8_t, int, true>>), &(argv[1]))->FILEARGS;
-
-	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench<frameDataCustom<uint8_t, float, false>>))->TESTARGS;
-	// 
-	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench<frameData<uint8_t, float, false>>))->TESTARGS;
-	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench<frameData<uint8_t, float, true>>))->TESTARGS;
-	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench<frameData<uint8_t, int, false>>))->TESTARGS;
-	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench<frameData<uint8_t, int, true>>))->TESTARGS;
+	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench<frameDataCustom<uint8_t>>))->TESTARGS;
+	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench<frameData<uint8_t>>))->TESTARGS;
 
 	//these entries are from BENCHMARK_MAIN
 	benchmark::Initialize(&argc, argv);

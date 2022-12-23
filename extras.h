@@ -19,35 +19,10 @@ Vec8f gather(const float* in, const Vec8i index) {
 	return _mm256_i32gather_ps(in, index, sizeof(*in));
 }
 
-template <typename T, typename U, int NT>
-void store2out(const T* in, U* out, int length);
+template <typename T>
+void store2out(const int* in, T* out, int length);
 
-template <int NT>
-void store2out(const float* in, uint8_t* out, int length) {
-	int i = 0;
-	for (; i < length - 31; i += 32) {
-		Vec8i a = truncatei(Vec8f().load(in + i) + 0.5f);
-		Vec8i b = truncatei(Vec8f().load(in + i + 8) + 0.5f);
-		Vec8i c = truncatei(Vec8f().load(in + i + 16) + 0.5f);
-		Vec8i d = truncatei(Vec8f().load(in + i + 24) + 0.5f);
-		// usar packus aqui pq satura se os nrs forem maiores k 255 ou menores k
-		// 0, portanto temos o clamp de graça
-		auto temp = Vec32uc(_mm256_packus_epi16(compress_saturated(a, c), compress_saturated(b, d)));
-		if constexpr (NT == false)
-			temp.store(out + i);
-		else
-			temp.store_nt(out + i);
-	}
-
-	// remainder loop
-#pragma clang loop vectorize(disable)
-	for (; i < length; ++i)
-		out[i] = in[i] + 0.5f;
-
-	return;
-}
-
-template <int NT>
+template <>
 void store2out(const int* in, uint8_t* out, int length) {
 	int i = 0;
 	for (; i < length - 31; i += 32) {
@@ -57,11 +32,7 @@ void store2out(const int* in, uint8_t* out, int length) {
 		Vec8i d = Vec8i().load(in + i + 24);
 		// usar packus aqui pq satura se os nrs forem maiores k 255 ou menores k
 		// 0, portanto temos o clamp de graça
-		auto temp = Vec32uc(_mm256_packus_epi16(compress_saturated(a, c), compress_saturated(b, d)));
-		if constexpr (NT == false)
-			temp.store(out + i);
-		else
-			temp.store_nt(out + i);
+		Vec32uc(_mm256_packus_epi16(compress_saturated(a, c), compress_saturated(b, d))).store_nt(out + i);
 	}
 
 	// remainder loop
