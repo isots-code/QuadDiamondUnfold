@@ -87,7 +87,7 @@ void frameDataCustom<T>::lineDataCustom::interpLines(void) {
     }
 }
 
-template <typename T = uint8_t, typename U = float, bool NT = false>
+template <typename T = uint8_t>
 void centripetalCatMullRomInterpolation(typename frameDataCustom<T>::lineDataCustom& self, const int i, const float* __restrict in, int* __restrict out) {
 
     const Vec8f Dj((self.len / 2) / (double)self.width);

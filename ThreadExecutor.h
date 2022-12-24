@@ -26,12 +26,20 @@ public:
 
 	~ThreadedExecutor() { stop(); }
 
-	auto fakeReadOutput(void) { return outputBuf.read(); }
+	auto readOutput(void) { return outputBuf.read(); }
 
-	auto fakeWriteInput(void) { return inputBuf.write(); }
+	auto writeInput(void) { return inputBuf.write(); }
 
 	void setIOBuffers(T* inCurr, T* inNext, T* outCurr, T* outNext) {
+		setIBuffers(inCurr, inNext);
+		setOBuffers(outCurr, outNext);
+	}
+
+	void setIBuffers(T* inCurr, T* inNext) {
 		inputBuf.setBuffers(inCurr, inNext);
+	}
+
+	void setOBuffers(T* outCurr, T* outNext) {
 		outputBuf.setBuffers(outCurr, outNext);
 	}
 

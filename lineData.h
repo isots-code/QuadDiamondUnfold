@@ -54,7 +54,7 @@ protected:
 };
 
 template <typename T>
-frameData<T>::lineData::lineData(frameData& parent, int y, int width)
+frameData<T>::lineData::lineData(frameData<T>& parent, int y, int width)
 	: len(y * 4 + 2), width(width), y(y), dim(parent.dim), taps(parent.taps), linePad(Vec8i::size()), paddedLen((len / linePad)* linePad + linePad),
 	tapsOffset(-(taps / 2 - taps + 1)), outTopOffset(y* (width * 2)), outBotOffset((width - 1 - y)* (width * 2)), parent(parent) {
 	xIndexes.resize(paddedLen);
