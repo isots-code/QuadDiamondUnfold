@@ -1,58 +1,8 @@
-#pragma once
-
 #include <vector>
 #include <array>
 
 #include "extras.h"
-
-struct frameData::lineData {
-
-	lineData(frameData& parent, int y, int width);
-
-	lineData() = delete;
-
-	virtual ~lineData();
-
-	virtual void processLine(const void* in, void* out);
-
-protected:
-	template<typename T>
-	void gatherLines(const T* in);
-
-	virtual void interpLines(void);
-
-	template<typename T>
-	void storeLines(T* out);
-
-	void constructGatherLUT(void);
-	 
-	template<typename T>
-	void store2out(const int* in, T* out, int length);
-
-public:
-	const int len;
-	const int width;
-
-protected:
-	const int y;
-	const int dim;
-	const int taps;
-	const int linePad;
-	const int paddedLen;
-	const int tapsOffset;
-	const size_t outTopOffset;
-	const size_t outBotOffset;
-	std::array<int*, 3> outTopLine;
-	std::array<int*, 3> outBotLine;
-	std::array<float*, 3> inTopLine;
-	std::array<float*, 3> inBotLine;
-	std::vector<std::vector<float>> coeffs;
-	std::vector<uint16_t> xIndexes;
-	std::vector<uint16_t> yIndexes;
-	std::vector<uint16_t> lineIndexes;
-	frameData& parent;
-
-};
+#include "frameData.h"
 
 frameData::lineData::lineData(frameData& parent, int y, int width)
 	: len(y * 4 + 2), width(width), y(y), dim(parent.dim), taps(parent.taps), linePad(Vec8i::size()), paddedLen((len / linePad)* linePad + linePad),
@@ -87,6 +37,8 @@ void frameData::lineData::processLine(const void* in, void* out) {
 	switch (this->parent.bitPerSubPixel) {
 		case BITS_8:
 			gatherLines(reinterpret_cast<const uint8_t*>(in));
+			interpLines();
+			storeLines(reinterpret_cast<uint8_t*>(out));
 		break;
 		case BITS_9:
 		case BITS_10:
@@ -97,21 +49,7 @@ void frameData::lineData::processLine(const void* in, void* out) {
 		case BITS_15:
 		case BITS_16:
 			gatherLines(reinterpret_cast<const uint16_t*>(in));
-		break;
-	}
-	interpLines();
-	switch (this->parent.bitPerSubPixel) {
-		case BITS_8:
-			storeLines(reinterpret_cast<uint8_t*>(out));
-			break;
-		case BITS_9:
-		case BITS_10:
-		case BITS_11:
-		case BITS_12:
-		case BITS_13:
-		case BITS_14:
-		case BITS_15:
-		case BITS_16:
+			interpLines();
 			storeLines(reinterpret_cast<uint16_t*>(out));
 			break;
 	}
@@ -188,6 +126,8 @@ void frameData::lineData::storeLines(T* out) {
 		store2out(outBotLine[component], compOutPtr + outBotOffset, width * 2);
 	}
 }
+
+template void frameData::lineData::storeLines(uint8_t* out); //????
 
 void frameData::lineData::constructGatherLUT(void) {
 
