@@ -29,60 +29,9 @@ int main(int argc, char** argv) {
 
 		decoder.connectFrameData(dataLookup);
 		decoder.startDecode();
+		decoder.startFFPlay();
 
-		std::thread([&]() {
-			// Create pipes
-			HANDLE hReadPipe, hWritePipe;
-			SECURITY_ATTRIBUTES sa = {
-				.lpSecurityDescriptor = nullptr,
-				.bInheritHandle = TRUE
-			};
-			if (!CreatePipe(&hReadPipe, &hWritePipe, &sa, dim * dim * 3 * 2)) {
-				std::cout << "Failed to create pipes\n";
-				return 1;
-			}
-
-			SetHandleInformation(hWritePipe, HANDLE_FLAG_INHERIT, 0);
-
-			STARTUPINFOA si = {
-				.dwFlags = STARTF_USESTDHANDLES,
-				.hStdInput = hReadPipe,
-				.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE),
-				.hStdError = GetStdHandle(STD_ERROR_HANDLE),
-			};
-
-			PROCESS_INFORMATION pi = {};
-
-			// Set up the command line for ffplay
-			auto cmd = std::string("ffplay -autoexit -f rawvideo -pixel_format yuv444p -video_size " + std::to_string(dim * 2) + "x" + std::to_string(dim) + " -i pipe:0");
-
-			// Create the ffplay process
-			if (!CreateProcessA(nullptr, (LPSTR)cmd.c_str(), nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi)) {
-				std::cout << "Failed to create process\n";
-				return -1;
-			}
-
-			unsigned long bytesWritten;
-			bool currentBuffer = 0;
-			while (decoder.running) {
-				dataLookup.readOutput();
-				auto buffer = currentBuffer ? out0.data() : out1.data();
-				if (!WriteFile(hWritePipe, buffer, dim * dim * 3 * 2, &bytesWritten, nullptr)) {
-					std::cout << "Failed to write to pipe\n";
-					return -1;
-				}
-				currentBuffer = !currentBuffer;
-			}
-			
-
-			// Clean up
-			CloseHandle(hReadPipe);
-			CloseHandle(hWritePipe);
-			CloseHandle(pi.hProcess);
-			CloseHandle(pi.hThread);
-			return 0;
-		}).join();
-
+		
 	} catch (std::exception& e) {
 		std::cerr << e.what();
 		return -1;

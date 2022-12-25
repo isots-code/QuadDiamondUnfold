@@ -151,6 +151,58 @@ struct ffmpegDecode {
 		//frameDataLookUp->writeInput();
 	}
 
+	void startFFPlay(void) {
+		std::thread([&](int dim) {
+			// Create pipes
+			HANDLE hReadPipe, hWritePipe;
+			SECURITY_ATTRIBUTES sa = {
+				.lpSecurityDescriptor = nullptr,
+				.bInheritHandle = TRUE
+			};
+			if (!CreatePipe(&hReadPipe, &hWritePipe, &sa, dim * dim * 3 * 2)) {
+				std::cout << "Failed to create pipes\n";
+				return 1;
+			}
+
+			SetHandleInformation(hWritePipe, HANDLE_FLAG_INHERIT, 0);
+
+			STARTUPINFOA si = {
+				.dwFlags = STARTF_USESTDHANDLES,
+				.hStdInput = hReadPipe,
+				.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE),
+				.hStdError = GetStdHandle(STD_ERROR_HANDLE),
+			};
+
+			PROCESS_INFORMATION pi = {};
+
+			// Set up the command line for ffplay
+			auto cmd = std::string("ffplay -autoexit -f rawvideo -pixel_format yuv444p -video_size " + std::to_string(dim * 2) + "x" + std::to_string(dim) + " -i pipe:0");
+
+			// Create the ffplay process
+			if (!CreateProcessA(nullptr, (LPSTR)cmd.c_str(), nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi)) {
+				std::cout << "Failed to create process\n";
+				return -1;
+			}
+
+			unsigned long bytesWritten;
+			while (running) {
+				auto buffer = frameDataLookUp->readOutput();
+				if (!WriteFile(hWritePipe, buffer, dim * dim * 3 * 2, &bytesWritten, nullptr)) {
+					std::cout << "Failed to write to pipe\n";
+					return -1;
+				}
+			}
+
+			// Clean up
+			CloseHandle(hReadPipe);
+			CloseHandle(hWritePipe);
+			CloseHandle(pi.hProcess);
+			CloseHandle(pi.hThread);
+			return 0;
+		}, codec_ctx->height).join();
+
+	}
+
 	bool running;
 	AlignedVector<T> buffers[2];
 
