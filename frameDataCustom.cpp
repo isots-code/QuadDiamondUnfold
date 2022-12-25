@@ -67,36 +67,10 @@ void centripetalCatMullRomInterpolation(typename frameDataCustom::lineDataCustom
     x -= x_floor;
     Vec8i x_int = truncatei(x_floor);
 
-    auto vecModCond = [](const Vec8i vec, const Vec8ib mask, const int div) -> Vec8i {
-        int test[Vec8i::size()];
-        vec.store(test);
-        volatile int mask_[Vec8ib::size()];
-        mask.store((int*)mask_);
-
-        #pragma unroll(1)
-        for (auto i = 0; i < Vec8i::size(); i++)
-            test[i] = mask_[i] ? test[i] % div : test[i];
-
-        Vec8i ret = Vec8i().load(test);
-        ret = if_add(ret < 0, ret, div);
-        return ret;
-    };
-
-    auto circular = [self, vecModCond](int offset, Vec8i indexes) -> Vec8i {
-        Vec8ib mask = indexes + offset >= self.len;
-        mask |= indexes + offset < 0;
-        return vecModCond(indexes + offset, mask, self.len);
-    };
-
-    Vec8i ret_1 = circular(-1, x_int);
-    Vec8i ret0 = circular(0, x_int);
-    Vec8i ret1 = circular(1, x_int);
-    Vec8i ret2 = circular(2, x_int);
-
-    Vec8f x_1 = gather(in, ret_1);
-    Vec8f x0 = gather(in, ret0);
-    Vec8f x1 = gather(in, ret1);
-    Vec8f x2 = gather(in, ret2);
+    Vec8f x_1 = lookup8(x_int - 1 - x_int[0], Vec8f().load(in + x_int[0]));
+    Vec8f x0 = lookup8(x_int + 0 - x_int[0], Vec8f().load(in + x_int[0]));
+    Vec8f x1 = lookup8(x_int + 1 - x_int[0], Vec8f().load(in + x_int[0]));
+    Vec8f x2 = lookup8(x_int + 2 - x_int[0], Vec8f().load(in + x_int[0]));
 
     Vec8f res = [](Vec8f x0, Vec8f x1, Vec8f x2, Vec8f x3, Vec8f x) -> Vec8f {
 
@@ -107,14 +81,6 @@ void centripetalCatMullRomInterpolation(typename frameDataCustom::lineDataCustom
         Vec8f m2 = mul_add((x3 - x2) / t23 - (x3 - x1) / (t12 + t23), t12, x2 - x1);
         Vec8f m12 = m1 + m2, x1_2 = x1 - x2;
         return mul_add(mul_add(2.0f, x1_2, m12) * x * x, x, mul_add(mul_sub(-3.0f, x1_2, m1 + m12) * x, x, mul_add(m1, x, x1)));
-
-        //Vec8f t01 = pow_ratio((x1 - x0) * (x1 - x0) + 1.0, 1, 4);
-        //Vec8f t12 = pow_ratio((x2 - x1) * (x2 - x1) + 1.0, 1, 4);
-        //Vec8f t23 = pow_ratio((x3 - x2) * (x3 - x2) + 1.0, 1, 4);
-        //Vec8f m1 = (x2 - x1 + t12 * ((x1 - x0) / t01 - (x2 - x0) / (t01 + t12)));
-        //Vec8f m2 = (x2 - x1 + t12 * ((x3 - x2) / t23 - (x3 - x1) / (t12 + t23)));
-        //return (x1 + x * (m1 - x * (2.0 * m1 + m2 + 3.0 * x1 - 3.0 * x2 - x * (m1 + m2 + 2.0 * x1 - 2.0 * x2))));
-        //return (2.0f * (x1 - x2) + m1 + m2) * x * x * x + (-3.0f * (x1 - x2) - m1 - m1 - m2) * x * x + (m1) * x + (x1);
 
     }(x_1, x0, x1, x2, x);
     roundi(res).store(out + i);

@@ -17,13 +17,16 @@ int main(int argc, char** argv) {
 		AlignedVector<uint8_t> out0(dim * dim * 2 * 3);
 		AlignedVector<uint8_t> out1(dim * dim * 2 * 3);
 
-		auto dataLookup = frameDataCustom(dim, 4, frameData::BITS_8, &centripetalCatMullRomInterpolation);
-		//auto dataLookup = frameData(dim, 4, frameData::BITS_8);
-		dataLookup.setOBuffers(out0.data(), out1.data());
+		frameData* dataLookup;
+		dataLookup = new frameDataCustom(dim, 4, frameData::BITS_8, &centripetalCatMullRomInterpolation);
+		//dataLookup = new frameData(dim, 4, frameData::BITS_8);
+		dataLookup->setOBuffers(out0.data(), out1.data());
 
-		decoder.connectFrameData(dataLookup);
+		decoder.connectFrameData(*dataLookup);
 		decoder.startDecode();
 		decoder.startFFPlay();
+
+		delete dataLookup;
 
 		
 	} catch (std::exception& e) {
