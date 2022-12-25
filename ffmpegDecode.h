@@ -176,7 +176,7 @@ struct ffmpegDecode {
 			PROCESS_INFORMATION pi = {};
 
 			// Set up the command line for ffplay
-			auto cmd = std::string("ffplay -autoexit -f rawvideo -pixel_format yuv444p -video_size " + std::to_string(dim * 2) + "x" + std::to_string(dim) + " -i pipe:0");
+			auto cmd = std::string("ffplay -autoexit -x 1440 -y 720 -f rawvideo -pixel_format yuv444p -video_size " + std::to_string(dim * 2) + "x" + std::to_string(dim) + " -i pipe:0");
 
 			// Create the ffplay process
 			if (!CreateProcessA(nullptr, (LPSTR)cmd.c_str(), nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi)) {
