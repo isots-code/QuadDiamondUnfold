@@ -64,68 +64,68 @@ protected:
 	DoubleBuffer inputBuf;
 	DoubleBuffer outputBuf;
 
-	void start() {
-		std::thread parent([this] {
+	void start() { std::thread(&ThreadedExecutor::loop, this).detach(); }
 
-			std::barrier mainBarrier(numThreads, [&]() noexcept {
-				using namespace std::chrono;
-				auto execTime = high_resolution_clock::now(); // we check time b4 we wait for buffers as we just finished the kernel
-				//doNotOptimizeAway(execTime);
-				if (mRunning) [[likely]] inputBuf.swap();
-				if (mRunning) [[likely]] input = inputBuf.read();
-				if (mRunning) [[likely]] output = outputBuf.write();
-				if (mRunning) [[likely]] outputBuf.swap();
-				if (!mRunning) [[unlikely]] return;
-				static bool startup = true;
-				static auto frames = 0ull;
-				static auto lastTime = high_resolution_clock::now();
-				if (!startup) [[likely]] {
-					auto duration = execTime - lastTime;
-					//doNotOptimizeAway(duration);
-					static auto durationTotal = static_cast<decltype(duration)>(0);
-					static auto durationTotalOverhead = static_cast<decltype(duration)>(0);
-					static auto lastPrintTime = lastTime;
-					durationTotal += duration;
-					lastTime = high_resolution_clock::now();
-					//doNotOptimizeAway(temp);
-					durationTotalOverhead += lastTime - execTime;
-					frames++;
-					if (duration_cast<milliseconds>(lastTime - lastPrintTime).count() > 125) {
-						//std::printf("\rfps: %10.3f avg: %10.3f frames done:%10llu overhead:%7.3f %%\t",
-						//	1e9 / duration.count(),
-						//	1e9 * frames / durationTotal.count(),
-						//	frames,
-						//	(durationTotalOverhead.count() * 100.0) / (durationTotal.count() + durationTotalOverhead.count())
-						//);
-						lastPrintTime = lastTime;
-					}
+private:
+	void loop(void) {
+
+		std::barrier mainBarrier(numThreads, [&]() noexcept {
+			using namespace std::chrono;
+			auto execTime = high_resolution_clock::now(); // we check time b4 we wait for buffers as we just finished the kernel
+			//doNotOptimizeAway(execTime);
+			if (mRunning) [[likely]] inputBuf.swap();
+			if (mRunning) [[likely]] input = inputBuf.read();
+			if (mRunning) [[likely]] output = outputBuf.write();
+			if (mRunning) [[likely]] outputBuf.swap();
+			if (!mRunning) [[unlikely]] return;
+			static bool startup = true;
+			static auto frames = 0ull;
+			static auto lastTime = high_resolution_clock::now();
+			if (!startup) [[likely]] {
+				auto duration = execTime - lastTime;
+				//doNotOptimizeAway(duration);
+				static auto durationTotal = static_cast<decltype(duration)>(0);
+				static auto durationTotalOverhead = static_cast<decltype(duration)>(0);
+				static auto lastPrintTime = lastTime;
+				durationTotal += duration;
+				lastTime = high_resolution_clock::now();
+				//doNotOptimizeAway(temp);
+				durationTotalOverhead += lastTime - execTime;
+				frames++;
+				if (duration_cast<milliseconds>(lastTime - lastPrintTime).count() > 125) {
+					//std::printf("\rfps: %10.3f avg: %10.3f frames done:%10llu overhead:%7.3f %%\t",
+					//	1e9 / duration.count(),
+					//	1e9 * frames / durationTotal.count(),
+					//	frames,
+					//	(durationTotalOverhead.count() * 100.0) / (durationTotal.count() + durationTotalOverhead.count())
+					//);
+					lastPrintTime = lastTime;
 				}
-				startup = false;
-			});
-
-			for (auto i = 0u; i < numThreads; i++) {
-				mThreads.emplace_back([&](int j) {
-					while (true) {
-						mainBarrier.arrive_and_wait();
-						if (!mRunning) [[unlikely]] break; //exit early if we where told to stop
-						kernel(j);
-					}
-					mainBarrier.arrive_and_drop(); //we have to resync
-				}, i);
 			}
-
-			//stopping code moved here
-			mRunning.wait(true); //blocks if we're still running
-			inputBuf.signalStop();
-			outputBuf.signalStop();
-
-			for (auto& thread : mThreads)
-				thread.join();
-			mStopped = true;
-			mStopped.notify_all();
-
+			startup = false;
 		});
-		parent.detach();
+
+		for (auto i = 0u; i < numThreads; i++) {
+			mThreads.emplace_back([&](int j) {
+				while (true) {
+					mainBarrier.arrive_and_wait();
+					if (!mRunning) [[unlikely]] break; //exit early if we where told to stop
+					kernel(j);
+				}
+				mainBarrier.arrive_and_drop(); //we have to resync
+			}, i);
+		}
+
+		//stopping code moved here
+		mRunning.wait(true); //blocks if we're still running
+		inputBuf.signalStop();
+		outputBuf.signalStop();
+
+		for (auto& thread : mThreads)
+			thread.join();
+		mStopped = true;
+		mStopped.notify_all();
+
 	}
 
 protected:

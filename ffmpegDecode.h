@@ -17,8 +17,8 @@ extern "C" {
 #include "AlignedVector.h"
 
 template <typename T>
-struct ffmpegInput {
-	ffmpegInput(const std::filesystem::path& input) : running(true), format_ctx(nullptr), 
+struct ffmpegDecode {
+	ffmpegDecode(const std::filesystem::path& input) : running(true), format_ctx(nullptr),
 		codec_ctx(nullptr), codec(nullptr), video_stream_index(-1), frameData(nullptr) {
 
 		auto path = std::filesystem::canonical(input).string();
@@ -64,9 +64,8 @@ struct ffmpegInput {
 
 	}
 
-	~ffmpegInput() {
+	~ffmpegDecode() {
 		decodeThread.join();
-		running = false;
 		avcodec_close(codec_ctx);
 		av_frame_free(&frame);
 		avcodec_free_context(&codec_ctx);
@@ -95,14 +94,13 @@ struct ffmpegInput {
 	}
 
 	void startDecode(void) {
-		decodeThread = std::thread(&ffmpegInput::decodeLoop, this);
+		decodeThread = std::move(std::thread(&ffmpegDecode::decodeLoop, this));
 	}
 
 	void decodeLoop(void) {
 
 		bool currentBuffer;
 		AVPacket packet;
-		int count = 0;;
 		while (av_read_frame(format_ctx, &packet) >= 0) {
 		  // Check if the packet is from the video stream
 			if (packet.stream_index == video_stream_index) {
@@ -123,32 +121,25 @@ struct ffmpegInput {
 				}
 
 				// Frame successfully decoded
-				// Allocate an array to hold the raw frame data
-				//int buffer_size = av_image_get_buffer_size(AV_PIX_FMT_YUV444P, codec_ctx->width, codec_ctx->height, 1);
-
-				//if (buffers[currentBuffer] == nullptr) {
-				//	buffers[currentBuffer] = std::move(AlignedVector<T>(buffer_size));
-				//	if (buffers[currentBuffer] == nullptr)
-				//		throw std::runtime_error("Error allocating buffer");
-				//}
-
 				// Fill the array with the raw frame data
-				if (av_image_fill_arrays(frame->data, frame->linesize, reinterpret_cast<uint8_t*>(buffers[currentBuffer].data()), AV_PIX_FMT_YUV444P, codec_ctx->width, codec_ctx->height, 1) < 0)
+				ret = av_image_copy_to_buffer(reinterpret_cast<uint8_t*>(buffers[currentBuffer].data()), codec_ctx->width * codec_ctx->height * 3, frame->data, frame->linesize, AV_PIX_FMT_YUV444P, codec_ctx->width, codec_ctx->height, 1);
+				if (ret < 0)
 					throw std::runtime_error("Error filling array");
 
 				frameData->writeInput();
 				currentBuffer = !currentBuffer;
-				std::cout << count++ << "\r";
 				
 			}
-
 			// Free the packet
 			av_packet_unref(&packet);
+
 		}
+		running = false;
+		//frameData->writeInput();
 	}
 
-
 	bool running;
+	AlignedVector<T> buffers[2];
 
 private:
 	AVFormatContext* format_ctx;
@@ -157,7 +148,6 @@ private:
 	AVFrame* frame;
 	int video_stream_index;
 	frameData<T>* frameData;
-	AlignedVector<T> buffers[2];
 
 	std::thread decodeThread;
 };
