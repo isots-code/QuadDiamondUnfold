@@ -5,11 +5,7 @@
 
 #include "extras.h"
 
-template <typename T>
-struct frameData;
-
-template <typename T>
-struct frameData<T>::lineData {
+struct frameData::lineData {
 
 	lineData(frameData& parent, int y, int width);
 
@@ -17,16 +13,21 @@ struct frameData<T>::lineData {
 
 	virtual ~lineData();
 
-	virtual void processLine(const T* in, T* out);
+	virtual void processLine(const void* in, void* out);
 
 protected:
+	template<typename T>
 	void gatherLines(const T* in);
 
 	virtual void interpLines(void);
 
+	template<typename T>
 	void storeLines(T* out);
 
 	void constructGatherLUT(void);
+	 
+	template<typename T>
+	void store2out(const int* in, T* out, int length);
 
 public:
 	const int len;
@@ -53,8 +54,7 @@ protected:
 
 };
 
-template <typename T>
-frameData<T>::lineData::lineData(frameData<T>& parent, int y, int width)
+frameData::lineData::lineData(frameData& parent, int y, int width)
 	: len(y * 4 + 2), width(width), y(y), dim(parent.dim), taps(parent.taps), linePad(Vec8i::size()), paddedLen((len / linePad)* linePad + linePad),
 	tapsOffset(-(taps / 2 - taps + 1)), outTopOffset(y* (width * 2)), outBotOffset((width - 1 - y)* (width * 2)), parent(parent) {
 	xIndexes.resize(paddedLen);
@@ -66,8 +66,7 @@ frameData<T>::lineData::lineData(frameData<T>& parent, int y, int width)
 	constructGatherLUT();
 }
 
-template <typename T>
-frameData<T>::lineData::~lineData() {
+frameData::lineData::~lineData() {
 	xIndexes.clear();
 	yIndexes.clear();
 	lineIndexes.clear();
@@ -76,8 +75,7 @@ frameData<T>::lineData::~lineData() {
 	coeffs.clear();
 }
 
-template <typename T>
-void frameData<T>::lineData::processLine(const T* in, T* out) {
+void frameData::lineData::processLine(const void* in, void* out) {
 	float inTopArray[3][paddedLen + taps];
 	float inBotArray[3][paddedLen + taps];
 	int outTopArray[3][width * 2];
@@ -86,13 +84,41 @@ void frameData<T>::lineData::processLine(const T* in, T* out) {
 	inBotLine = { inBotArray[0] + tapsOffset, inBotArray[1] + tapsOffset, inBotArray[2] + tapsOffset };
 	outTopLine = { outTopArray[0] + tapsOffset, outTopArray[1] + tapsOffset, outTopArray[2] + tapsOffset };
 	outBotLine = { outBotArray[0] + tapsOffset, outBotArray[1] + tapsOffset, outBotArray[2] + tapsOffset };
-	gatherLines(in);
+	switch (this->parent.bitPerSubPixel) {
+		case BITS_8:
+			gatherLines(reinterpret_cast<const uint8_t*>(in));
+		break;
+		case BITS_9:
+		case BITS_10:
+		case BITS_11:
+		case BITS_12:
+		case BITS_13:
+		case BITS_14:
+		case BITS_15:
+		case BITS_16:
+			gatherLines(reinterpret_cast<const uint16_t*>(in));
+		break;
+	}
 	interpLines();
-	storeLines(out);
+	switch (this->parent.bitPerSubPixel) {
+		case BITS_8:
+			storeLines(reinterpret_cast<uint8_t*>(out));
+			break;
+		case BITS_9:
+		case BITS_10:
+		case BITS_11:
+		case BITS_12:
+		case BITS_13:
+		case BITS_14:
+		case BITS_15:
+		case BITS_16:
+			storeLines(reinterpret_cast<uint16_t*>(out));
+			break;
+	}
 }
 
-template <typename T>
-void frameData<T>::lineData::gatherLines(const T* in) {
+template<typename T>
+void frameData::lineData::gatherLines(const T* in) {
 	for (unsigned long long i = 0; i < xIndexes.size(); i += Vec8us::size()) {
 
 		Vec8i x = extend(Vec8us().load(&(xIndexes[i])));
@@ -120,8 +146,7 @@ void frameData<T>::lineData::gatherLines(const T* in) {
 	}
 }
 
-template <typename T>
-void frameData<T>::lineData::interpLines(void) {
+void frameData::lineData::interpLines(void) {
 
 	const int Lj = len / 2;
 
@@ -155,8 +180,8 @@ void frameData<T>::lineData::interpLines(void) {
 	}
 }
 
-template <typename T>
-void frameData<T>::lineData::storeLines(T* out) {
+template<typename T>
+void frameData::lineData::storeLines(T* out) {
 	for (int component = 0; component < 3; component++) {
 		auto compOutPtr = out + (width * width * 2 * component);
 		store2out(outTopLine[component], compOutPtr + outTopOffset, width * 2);
@@ -164,8 +189,7 @@ void frameData<T>::lineData::storeLines(T* out) {
 	}
 }
 
-template <typename T>
-void frameData<T>::lineData::constructGatherLUT(void) {
+void frameData::lineData::constructGatherLUT(void) {
 
 	const int Lj = len / 2;
 	const int halfWidth = width / 2;
@@ -195,4 +219,42 @@ void frameData<T>::lineData::constructGatherLUT(void) {
 		for (int i = 0; i < taps; i++)
 			coeffs[i][x] = coeff[i];
 	}
+}
+
+template<>
+void frameData::lineData::store2out(const int* in, uint8_t* out, int length) {
+	int i = 0;
+	for (; i < length - Vec32uc::size() - 1; i += Vec32uc::size()) {
+		Vec8i a = Vec8i().load(in + i);
+		Vec8i b = Vec8i().load(in + i + 8);
+		Vec8i c = Vec8i().load(in + i + 16);
+		Vec8i d = Vec8i().load(in + i + 24);
+		// usar packus aqui pq satura se os nrs forem maiores k 255 ou menores k
+		// 0, portanto temos o clamp de graça
+		Vec32uc(_mm256_packus_epi16(compress_saturated(a, c), compress_saturated(b, d))).store_nt(out + i);
+	}
+
+	// remainder loop
+#pragma clang loop vectorize(disable)
+	for (; i < length; ++i)
+		out[i] = std::max(std::min(in[i], 255), 0);
+
+	return;
+}
+
+template<>
+void frameData::lineData::store2out(const int* in, uint16_t* out, int length) {
+	int i = 0;
+	for (; i < length - Vec16us::size() - 1; i += Vec16us::size()) {
+		Vec8i a = Vec8i().load(in + i);
+		Vec8i b = Vec8i().load(in + i + 8);
+		compress_saturated(a, b).store_nt(out + i);
+	}
+
+	// remainder loop
+#pragma clang loop vectorize(disable)
+	for (; i < length; ++i)
+		out[i] = std::max(std::min(in[i], (1 << parent.bitPerSubPixel) - 1), 0);
+
+	return;
 }

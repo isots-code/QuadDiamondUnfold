@@ -16,9 +16,8 @@ extern "C" {
 #include "frameData.h"
 #include "AlignedVector.h"
 
-template <typename T>
 struct ffmpegDecode {
-	ffmpegDecode(const std::filesystem::path& input) : running(true), format_ctx(nullptr),
+	ffmpegDecode(const std::filesystem::path& input, frameData::bitPerSubPixel_t bits) : running(true), format_ctx(nullptr),
 		codec_ctx(nullptr), codec(nullptr), video_stream_index(-1), frameDataLookUp(nullptr) {
 
 		auto path = std::filesystem::canonical(input).string();
@@ -72,16 +71,30 @@ struct ffmpegDecode {
 		avformat_close_input(&format_ctx);
 	}
 	
-	void connectFrameData(frameData<T>& frameData) {
+	void connectFrameData(frameData& frameData) {
 		frameDataLookUp = &frameData;
 
 		int buffer_size = av_image_get_buffer_size(AV_PIX_FMT_YUV444P, codec_ctx->width, codec_ctx->height, 1);
 
-		buffers[0] = std::move(AlignedVector<T>(buffer_size));
+		switch (frameData.bitPerSubPixel) {
+			case frameData::BITS_9:
+			case frameData::BITS_10:
+			case frameData::BITS_11:
+			case frameData::BITS_12:
+			case frameData::BITS_13:
+			case frameData::BITS_14:
+			case frameData::BITS_15:
+			case frameData::BITS_16:
+				buffer_size *= 2;
+				break;
+			default:
+				break;
+		}
+		buffers[0] = std::move(AlignedVector<uint8_t>(buffer_size));
 		if (buffers[0].data() == nullptr)
 			throw std::runtime_error("Error allocating buffer");
 
-		buffers[1] = std::move(AlignedVector<T>(buffer_size));
+		buffers[1] = std::move(AlignedVector<uint8_t>(buffer_size));
 		if (buffers[1].data() == nullptr)
 			throw std::runtime_error("Error allocating buffer");
 
@@ -129,7 +142,7 @@ struct ffmpegDecode {
 						break;
 					case AV_PIX_FMT_YUV420P:
 						ret = av_image_copy_to_buffer(reinterpret_cast<uint8_t*>(buffers[currentBuffer].data()), codec_ctx->width * codec_ctx->height * 3 / 2, frame->data, frame->linesize, AV_PIX_FMT_YUV420P, codec_ctx->width, codec_ctx->height, 1);
-						frameData<T>::expandUV(buffers[currentBuffer].data() + codec_ctx->height * codec_ctx->height, codec_ctx->height);
+						frameData::expandUV(buffers[currentBuffer].data() + codec_ctx->height * codec_ctx->height, codec_ctx->height);
 						break;
 					default:
 						throw std::runtime_error("Unsuported pixel format");
@@ -204,7 +217,7 @@ struct ffmpegDecode {
 	}
 
 	bool running;
-	AlignedVector<T> buffers[2];
+	AlignedVector<uint8_t> buffers[2];
 
 private:
 	AVFormatContext* format_ctx;
@@ -212,7 +225,7 @@ private:
 	AVCodec* codec;
 	AVFrame* frame;
 	int video_stream_index;
-	frameData<T>* frameDataLookUp;
+	frameData* frameDataLookUp;
 
 	std::thread decodeThread;
 };

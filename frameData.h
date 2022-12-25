@@ -14,13 +14,24 @@
 
 #include "ThreadExecutor.h"
 
-template <typename T>
-struct frameData : public ThreadedExecutor<T> {
+struct frameData : public ThreadedExecutor {
 
-	using DataType = T;
+	//using DataType = T;
 
-	frameData(int dim, int taps, int numThread);
-	frameData(int dim, int taps);
+	enum bitPerSubPixel_t {
+		BITS_8 = 8,
+		BITS_9,
+		BITS_10,
+		BITS_11,
+		BITS_12,
+		BITS_13,
+		BITS_14,
+		BITS_15,
+		BITS_16
+	};
+
+	frameData(int dim, int taps, bitPerSubPixel_t bits, int numThread);
+	frameData(int dim, int taps, bitPerSubPixel_t bits);
 
 	frameData() = delete;
 
@@ -30,7 +41,11 @@ struct frameData : public ThreadedExecutor<T> {
 
 	virtual void kernel(const int id);
 
-	static void expandUV(T* data, int dim);
+	static void expandUV(uint8_t* data, int dim);
+
+	static void expandUV(uint16_t* data, int dim);
+
+	const bitPerSubPixel_t bitPerSubPixel;
 
 protected:
 
@@ -41,33 +56,31 @@ protected:
 	std::vector<lineData> lines;
 };
 
-template <typename T>
-frameData<T>::frameData(int dim, int taps, int numThreads) : ThreadedExecutor<T>(dim, numThreads), dim(dim), taps(taps) {
+#include "lineData.h"
+
+frameData::frameData(int dim, int taps, bitPerSubPixel_t bits, int numThreads) : ThreadedExecutor(dim, numThreads), bitPerSubPixel(bits), dim(dim), taps(taps) {
 	lines.reserve(dim / 2);
 	for (int i = 0; i < dim / 2; i++)
 		lines.emplace_back(*this, i, dim);
 }
 
-template <typename T>
-frameData<T>::frameData(int dim, int taps) : frameData<T>(dim, taps, std::thread::hardware_concurrency()) { }
+frameData::frameData(int dim, int taps, bitPerSubPixel_t bits) : frameData(dim, taps, bits, std::thread::hardware_concurrency()) { }
 
-template <typename T>
-frameData<T>::~frameData() { 
+frameData::~frameData() { 
 	this->stop();
 	lines.clear(); 
 }
 
-template <typename T>
-void frameData<T>::expandUV(T* data, int dim) {
+void frameData::expandUV(uint8_t* data, int dim) {
 
 	struct wrapper {
-		T* data;
+		uint8_t* data;
 		size_t dim;
-		wrapper(T* data, const size_t dim) : data(data), dim(dim) {};
-		T& at(const size_t x, const size_t y, const size_t comp) { return data[x + y * dim + (dim * dim * comp)]; };
+		wrapper(uint8_t* data, const size_t dim) : data(data), dim(dim) {};
+		uint8_t& at(const size_t x, const size_t y, const size_t comp) { return data[x + y * dim + (dim * dim * comp)]; };
 	};
 
-	auto temp = new T[dim * dim / 2];
+	auto temp = new uint8_t[dim * dim / 2];
 	std::memcpy(temp, data, dim * dim / 2);
 	wrapper input(temp, dim / 2);
 	wrapper output(data, dim);
@@ -99,17 +112,54 @@ void frameData<T>::expandUV(T* data, int dim) {
 
 }
 
-template <typename T>
-std::vector<float> frameData<T>::buildCoeffs(double x) {
+void frameData::expandUV(uint16_t* data, int dim) {
+
+	struct wrapper {
+		uint16_t* data;
+		size_t dim;
+		wrapper(uint16_t* data, const size_t dim) : data(data), dim(dim) {};
+		uint16_t& at(const size_t x, const size_t y, const size_t comp) { return data[x + y * dim + (dim * dim * comp)]; };
+	};
+
+	auto temp = new uint16_t[dim * dim / 2];
+	std::memcpy(temp, data, dim * dim / 2);
+	wrapper input(temp, dim / 2);
+	wrapper output(data, dim);
+
+	const Vec16us LUT(0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7);
+
+	for (int y = 0; y < dim / 2; y++) {
+		int x = 0;
+		for (; x < (dim / 2) - (Vec8us::size() - 1); x += Vec8us::size()) {
+			for (int comp = 0; comp < 2; comp++) {
+				Vec16us in(Vec8us().load(&input.at(x, y, comp)), Vec8us());
+				Vec16us out(lookup16(LUT, in));
+				out.store(&output.at(2 * x, 2 * y, comp));
+				out.store(&output.at(2 * x, 2 * y + 1, comp));
+			}
+		}
+
+		for (; x < dim / 2; ++x) {
+			for (int comp = 0; comp < 2; comp++)
+				output.at(2 * x, 2 * y, comp) =
+				output.at(2 * x + 1, 2 * y, comp) =
+				output.at(2 * x, 2 * y + 1, comp) =
+				output.at(2 * x + 1, 2 * y + 1, comp) =
+				input.at(x, y, comp);
+		}
+	}
+
+	delete[] temp;
+
+}
+
+std::vector<float> frameData::buildCoeffs(double x) {
 	std::vector<float> ret(taps, 0.0f);
 	ret[-(taps / 2 - taps + 1)] = 1.0f;
 	return ret;
 }
 
-template <typename T>
-void frameData<T>::kernel(const int id) {
+void frameData::kernel(const int id) {
 	for (int i = id; i < dim / 2; i += this->numThreads) // topo e fundo por iteração
 		lines[i].processLine(this->input, this->output);
 };
-
-#include "lineData.h"

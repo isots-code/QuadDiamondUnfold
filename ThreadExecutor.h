@@ -15,7 +15,6 @@ inline auto doNotOptimizeAway(T const& datum) {
 	return reinterpret_cast<char const volatile&>(datum);
 }
 
-template <class T>
 class ThreadedExecutor {
 public:
 
@@ -30,16 +29,16 @@ public:
 
 	auto writeInput(void) { return inputBuf.write(); }
 
-	void setIOBuffers(T* inCurr, T* inNext, T* outCurr, T* outNext) {
+	void setIOBuffers(void* inCurr, void* inNext, void* outCurr, void* outNext) {
 		setIBuffers(inCurr, inNext);
 		setOBuffers(outCurr, outNext);
 	}
 
-	void setIBuffers(T* inCurr, T* inNext) {
+	void setIBuffers(void* inCurr, void* inNext) {
 		inputBuf.setBuffers(inCurr, inNext);
 	}
 
-	void setOBuffers(T* outCurr, T* outNext) {
+	void setOBuffers(void* outCurr, void* outNext) {
 		outputBuf.setBuffers(outCurr, outNext);
 	}
 
@@ -53,16 +52,13 @@ public:
 
 protected:
 
-	T* output;
-	const T* input;
+	void* output;
+	const void* input;
 	const std::size_t dim;
 	const std::size_t numThreads;
 	std::atomic_bool mStopped;
 	std::atomic_bool mRunning;
 	std::vector<std::thread> mThreads;
-	class DoubleBuffer;
-	DoubleBuffer inputBuf;
-	DoubleBuffer outputBuf;
 
 	void start() { std::thread(&ThreadedExecutor::loop, this).detach(); }
 
@@ -134,9 +130,9 @@ protected:
 
 		DoubleBuffer(void) : readValid(false), writeValid(true) {}
 
-		T* write(void) {
+		void* write(void) {
 			if (stopExit) return nullptr; //early exit, just in case
-			T* retPtr;
+			void* retPtr;
 			writeValid.wait(false); //blocks if not valid (false)
 			//writeValid.wait(false, std::memory_order_acquire); //blocks if not valid (false)
 			if (stopExit) return nullptr; //post signal exit
@@ -150,9 +146,9 @@ protected:
 			return retPtr;
 		}
 
-		const T* read(void) {
+		const void* read(void) {
 			if (stopExit) return nullptr; //early exit, just in case
-			T* retPtr;
+			void* retPtr;
 			readValid.wait(false); //blocks if not valid (false)
 			//readValid.wait(false, std::memory_order_acquire); //blocks if not valid (false)
 			if (stopExit) return nullptr; //post signal exit
@@ -185,7 +181,7 @@ protected:
 			}
 		}
 
-		void setBuffers(T* curr, T* nxt) {
+		void setBuffers(void* curr, void* nxt) {
 			current = curr;
 			next = nxt;
 		}
@@ -210,12 +206,14 @@ protected:
 		}
 
 	private:
-		T* next = nullptr;
-		T* current = nullptr;
+		void* next = nullptr;
+		void* current = nullptr;
 		std::mutex stateMtx;
 		bool stopExit = false;
 		std::atomic_bool readValid;
 		std::atomic_bool writeValid;
 	};
 
+	DoubleBuffer inputBuf;
+	DoubleBuffer outputBuf;
 };

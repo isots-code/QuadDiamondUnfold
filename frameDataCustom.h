@@ -3,15 +3,14 @@
 #include "frameData.h"
 #include "extras.h"
 
-template <typename T>
-struct frameDataCustom final : public frameData<T> {
+struct frameDataCustom final : public frameData {
 
     struct lineDataCustom;
 
     typedef void (*interpFunc_t)(frameDataCustom::lineDataCustom& self, const int x, const float* __restrict in, int* __restrict out);
 
-    frameDataCustom(int dim, int taps, interpFunc_t interp, int numThreads);
-    frameDataCustom(int dim, int taps, interpFunc_t interp);
+    frameDataCustom(int dim, int taps, bitPerSubPixel_t bits, interpFunc_t interp, int numThreads);
+    frameDataCustom(int dim, int taps, bitPerSubPixel_t bits, interpFunc_t interp);
 
     frameDataCustom() = delete;
 
@@ -19,11 +18,11 @@ struct frameDataCustom final : public frameData<T> {
 
     void kernel(const int id) final;
 
-    struct lineDataCustom final : frameData<T>::lineData {
+    struct lineDataCustom final : frameData::lineData {
 
         lineDataCustom(frameDataCustom& parent, int y, int width);
 
-        void processLine(const T* in, T* out) final;
+        void processLine(const void* in, void* out) final;
 
     private:
         void interpLines(void) final;
@@ -37,33 +36,27 @@ private:
     std::vector<lineDataCustom> linesCustom;
 
 };
-template <typename T>
-frameDataCustom<T>::frameDataCustom(int dim, int taps, interpFunc_t interp, int numThreads) : frameData<T>(dim, taps, numThreads), interp(interp) {
+frameDataCustom::frameDataCustom(int dim, int taps, bitPerSubPixel_t bits, interpFunc_t interp, int numThreads) : frameData(dim, taps, bits, numThreads), interp(interp) {
     linesCustom.reserve(dim / 2);
     for (int i = 0; i < dim / 2; i++)
         linesCustom.emplace_back(*this, i, dim);
 }
 
-template <typename T>
-frameDataCustom<T>::frameDataCustom(int dim, int taps, interpFunc_t interp) : frameDataCustom<T>(dim, taps, interp, std::thread::hardware_concurrency()) { }
+frameDataCustom::frameDataCustom(int dim, int taps, bitPerSubPixel_t bits, interpFunc_t interp) : frameDataCustom(dim, taps, bits, interp, std::thread::hardware_concurrency()) { }
 
-template <typename T>
-frameDataCustom<T>::~frameDataCustom() {
+frameDataCustom::~frameDataCustom() {
     this->stop();
     linesCustom.clear();
 }
 
-template <typename T>
-void frameDataCustom<T>::kernel(const int id) {
+void frameDataCustom::kernel(const int id) {
     for (int i = id; i < this->dim / 2; i += this->numThreads) // topo e fundo por iteração
         linesCustom[i].processLine(this->input, this->output);
 };
 
-template <typename T>
-frameDataCustom<T>::lineDataCustom::lineDataCustom(frameDataCustom& parent, int y, int width) : frameData<T>::lineData(parent, y, width), parent(parent) {}
+frameDataCustom::lineDataCustom::lineDataCustom(frameDataCustom& parent, int y, int width) : frameData::lineData(parent, y, width), parent(parent) {}
 
-template <typename T>
-void frameDataCustom<T>::lineDataCustom::processLine(const T* in, T* out) {
+void frameDataCustom::lineDataCustom::processLine(const void* in, void* out) {
     float inTopArray[3][this->paddedLen + this->taps];
     float inBotArray[3][this->paddedLen + this->taps];
     int outTopArray[3][this->width * 2];
@@ -72,13 +65,40 @@ void frameDataCustom<T>::lineDataCustom::processLine(const T* in, T* out) {
     this->inBotLine = { inBotArray[0] + this->tapsOffset, inBotArray[1] + this->tapsOffset, inBotArray[2] + this->tapsOffset };
     this->outTopLine = { outTopArray[0] + this->tapsOffset, outTopArray[1] + this->tapsOffset, outTopArray[2] + this->tapsOffset };
     this->outBotLine = { outBotArray[0] + this->tapsOffset, outBotArray[1] + this->tapsOffset, outBotArray[2] + this->tapsOffset };
-    this->gatherLines(in);
+    switch (this->parent.bitPerSubPixel) {
+        case BITS_8:
+            this->gatherLines(reinterpret_cast<const uint8_t*>(in));
+            break;
+        case BITS_9:
+        case BITS_10:
+        case BITS_11:
+        case BITS_12:
+        case BITS_13:
+        case BITS_14:
+        case BITS_15:
+        case BITS_16:
+            this->gatherLines(reinterpret_cast<const uint16_t*>(in));
+            break;
+    }
     interpLines();
-    this->storeLines(out);
+    switch (this->parent.bitPerSubPixel) {
+        case BITS_8:
+            this->storeLines(reinterpret_cast<uint8_t*>(out));
+            break;
+        case BITS_9:
+        case BITS_10:
+        case BITS_11:
+        case BITS_12:
+        case BITS_13:
+        case BITS_14:
+        case BITS_15:
+        case BITS_16:
+            this->storeLines(reinterpret_cast<uint16_t*>(out));
+            break;
+    }
 }
 
-template <typename T>
-void frameDataCustom<T>::lineDataCustom::interpLines(void) {
+void frameDataCustom::lineDataCustom::interpLines(void) {
     for (int i = 0; i < this->width * 2; i += Vec8f::size()) {
         for (int component = 0; component < 3; component++) {
             parent.interp(*this, i, this->inTopLine[component], this->outTopLine[component]);
@@ -88,7 +108,7 @@ void frameDataCustom<T>::lineDataCustom::interpLines(void) {
 }
 
 template <typename T = uint8_t>
-void centripetalCatMullRomInterpolation(typename frameDataCustom<T>::lineDataCustom& self, const int i, const float* __restrict in, int* __restrict out) {
+void centripetalCatMullRomInterpolation(typename frameDataCustom::lineDataCustom& self, const int i, const float* __restrict in, int* __restrict out) {
 
     const Vec8f Dj((self.len / 2) / (double)self.width);
     Vec8f x = Dj * (i + Vec8f(0, 1, 2, 3, 4, 5, 6, 7));

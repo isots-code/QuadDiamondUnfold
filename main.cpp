@@ -13,18 +13,19 @@
 
 int main(int argc, char** argv) {
 
-	using bitDepth = bits8_t;
+	using bitType = uint8_t;
+	const auto bitDepth = frameData::BITS_8;
 
 	try {
-		auto decoder = ffmpegDecode<bitDepth>(std::string(argv[1]));
+		auto decoder = ffmpegDecode(std::string(argv[1]), bitDepth);
 
 		int dim = decoder.getDim();
 
-		AlignedVector<bitDepth> out0(dim * dim * 2 * 3);
-		AlignedVector<bitDepth> out1(dim * dim * 2 * 3);
+		AlignedVector<bitType> out0(dim * dim * 2 * 3);
+		AlignedVector<bitType> out1(dim * dim * 2 * 3);
 
-		//auto dataLookup = frameDataCustom<bitDepth>(dim, 4, &centripetalCatMullRomInterpolation<bitDepth>);
-		auto dataLookup = frameData<bitDepth>(dim, 4);
+		//auto dataLookup = frameDataCustom(dim, 4, &centripetalCatMullRomInterpolation);
+		auto dataLookup = frameData(dim, 4, bitDepth);
 		dataLookup.setOBuffers(out0.data(), out1.data());
 
 		decoder.connectFrameData(dataLookup);
