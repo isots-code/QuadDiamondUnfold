@@ -97,13 +97,10 @@ void frameData::expandUV(uint16_t* data, int dim) {
 
 }
 
-std::vector<float> frameData::buildCoeffs(double x) {
-	(void)x;
-	std::vector<float> ret(taps, 0.0f);
-	ret[-(taps / 2 - taps + 1)] = 1.0f;
-	return ret;
+void frameData::buildFrameCoeffs(void) {
+	for (auto& line : lines)
+		line.buildLineCoeffs();
 }
-
 
 void frameData::kernel(const int id) {
 	for (int i = id; i < dim / 2; i += this->numThreads) // topo e fundo por iteração

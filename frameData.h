@@ -35,9 +35,11 @@ struct frameData : public ThreadedExecutor {
 
 	virtual ~frameData();
 
-	std::vector<float> buildCoeffs(double x);
+	virtual std::vector<float> coeffsFunc(double x) = 0;
 
 	virtual void kernel(const int id);
+
+	void buildFrameCoeffs(void);
 
 	template<typename T>
 	static void expandUV(T* data, int dim);
@@ -55,6 +57,8 @@ protected:
 		virtual ~lineData();
 
 		virtual void processLine(const void* in, void* out);
+
+		void buildLineCoeffs(void);
 
 	protected:
 		template<typename T>

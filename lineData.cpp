@@ -99,13 +99,12 @@ void frameData::lineData::interpLines(void) {
 
 #pragma unroll(1)
 		for (int j = 0; j < taps; j++) {
-			Vec8i tempIndexes = indexes + j - tapsOffset;
 			Vec8f coeff = Vec8f().load(&coeffs[j][i]);
 			for (int component = 0; component < 3; component++) {
-				sumTL[component] += lookup8(tempIndexes - baseIndex, Vec8f().load(inTopLine[component] + lineIndexes[i])) * coeff;
-				sumTR[component] += lookup8(tempIndexes - baseIndex, Vec8f().load(inTopLine[component] + lineIndexes[i] + Lj)) * coeff;
-				sumBL[component] += lookup8(tempIndexes - baseIndex, Vec8f().load(inBotLine[component] + lineIndexes[i])) * coeff;
-				sumBR[component] += lookup8(tempIndexes - baseIndex, Vec8f().load(inBotLine[component] + lineIndexes[i] + Lj)) * coeff;
+				sumTL[component] += lookup8(indexes - baseIndex, Vec8f().load(inTopLine[component] + lineIndexes[i] + j - tapsOffset)) * coeff;
+				sumTR[component] += lookup8(indexes - baseIndex, Vec8f().load(inTopLine[component] + lineIndexes[i] + j - tapsOffset + Lj)) * coeff;
+				sumBL[component] += lookup8(indexes - baseIndex, Vec8f().load(inBotLine[component] + lineIndexes[i] + j - tapsOffset)) * coeff;
+				sumBR[component] += lookup8(indexes - baseIndex, Vec8f().load(inBotLine[component] + lineIndexes[i] + j - tapsOffset + Lj)) * coeff;
 			}
 		}
 
@@ -151,11 +150,15 @@ void frameData::lineData::constructGatherLUT(void) {
 	const double Dj = Lj / (double)width;
 	for (int x = 0; x < width; x++)
 		lineIndexes[x] = floor(Dj * x);
+}
 
+void frameData::lineData::buildLineCoeffs(void) {
+
+	const double distanceJ = (len / 2) / (double)width;
 	for (int x = 0; x < width; x++) {
-		auto x_ = Dj * x;
+		auto x_ = distanceJ * x;
 		x_ -= floor(x_);
-		auto coeff = parent.buildCoeffs(x_);
+		auto coeff = parent.coeffsFunc(x_);
 		for (int i = 0; i < taps; i++)
 			coeffs[i][x] = coeff[i];
 	}

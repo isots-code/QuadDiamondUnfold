@@ -14,7 +14,9 @@ struct frameDataCustom final : public frameData {
 
     frameDataCustom() = delete;
 
-    virtual ~frameDataCustom() final;
+    ~frameDataCustom() final;
+
+    std::vector<float> coeffsFunc(double x) final;
 
     void kernel(const int id) final;
 
@@ -36,5 +38,3 @@ private:
     std::vector<lineDataCustom> linesCustom;
 
 };
-
-void centripetalCatMullRomInterpolation(typename frameDataCustom::lineDataCustom& self, const int i, const float* __restrict in, int* __restrict out);

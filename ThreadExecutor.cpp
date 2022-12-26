@@ -1,12 +1,11 @@
-#include "ThreadExecutor.h"
-
-#pragma once
 #include <iostream>
 #include <cstddef>
 #include <barrier>
 #include <chrono>
 #include <memory>
 #include <latch>
+
+#include "ThreadExecutor.h"
 
 template <class T>
 inline auto doNotOptimizeAway(T const& datum) {
