@@ -18,32 +18,35 @@ int main(int argc, char** argv) {
 		AlignedVector<uint8_t> out1(dim * dim * 2 * 3);
 
 		frameData* dataLookup;
-		switch (std::atoi(argv[2])) {
-			case 1:
-				dataLookup = new nearest(dim, frameData::BITS_8);
-				break;
-			case 2:
-				dataLookup = new linear(dim, frameData::BITS_8);
-				break;
-			case 3:
-				dataLookup = new cubic(dim, frameData::BITS_8);
-				break;
-			case 4:
-				dataLookup = new lanczos2(dim, frameData::BITS_8);
-				break;
-			case 5:
-				dataLookup = new lanczos3(dim, frameData::BITS_8);
-				break;
-			case 6:
-			default:
-				dataLookup = new lanczos4(dim, frameData::BITS_8);
-				break;
-			case 7:
-				dataLookup = new lanczosN(dim, std::atoi(argv[3]), frameData::BITS_8);
-				break;
-			case 8:
-				dataLookup = new frameDataCustom(dim, 4, frameData::BITS_8, &centripetalCatMullRomInterpolation);
-				break;
+		if (argv[2] == nullptr)
+			dataLookup = new lanczos4(dim, frameData::BITS_8);
+		else {
+			switch (std::atoi(argv[2])) {
+				case 1:
+					dataLookup = new nearest(dim, frameData::BITS_8);
+					break;
+				case 2:
+					dataLookup = new linear(dim, frameData::BITS_8);
+					break;
+				case 3:
+					dataLookup = new cubic(dim, frameData::BITS_8);
+					break;
+				case 4:
+					dataLookup = new lanczos2(dim, frameData::BITS_8);
+					break;
+				case 5:
+					dataLookup = new lanczos3(dim, frameData::BITS_8);
+					break;
+				case 6:
+					dataLookup = new lanczos4(dim, frameData::BITS_8);
+					break;
+				case 7:
+					dataLookup = new lanczosN(dim, std::atoi(argv[3]), frameData::BITS_8);
+					break;
+				case 8:
+					dataLookup = new frameDataCustom(dim, 4, frameData::BITS_8, &centripetalCatMullRomInterpolation);
+					break;
+			}
 		}
 		dataLookup->setOBuffers(out0.data(), out1.data());
 

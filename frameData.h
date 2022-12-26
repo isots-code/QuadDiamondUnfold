@@ -44,6 +44,9 @@ struct frameData : public ThreadedExecutor {
 	template<typename T>
 	static void expandUV(T* data, int dim);
 
+	template<typename T>
+	static void expandUV_scalar(T* data, int dim);
+
 	const bitPerSubPixel_t bitPerSubPixel;
 
 protected:
@@ -68,6 +71,14 @@ protected:
 
 		template<typename T>
 		void storeLines(T* out);
+
+		template<typename T>
+		void gatherLines_scalar(const T* in);
+
+		virtual void interpLines_scalar(void);
+
+		template<typename T>
+		void storeLines_scalar(T* out);
 
 		void constructGatherLUT(void);
 

@@ -1,5 +1,6 @@
 #include <vector>
 #include <array>
+#include <cmath>
 
 #include "extras.h"
 #include "frameData.h"
@@ -97,7 +98,6 @@ void frameData::lineData::interpLines(void) {
 		Vec8i indexes = extend(Vec8us().load(&(lineIndexes[i])));
 		Vec8i baseIndex(lineIndexes[i]);
 
-#pragma unroll(1)
 		for (int j = 0; j < taps; j++) {
 			Vec8f coeff = Vec8f().load(&coeffs[j][i]);
 			for (int component = 0; component < 3; component++) {
@@ -127,6 +127,76 @@ void frameData::lineData::storeLines(T* out) {
 }
 
 template void frameData::lineData::storeLines(uint8_t* out); //????
+
+template<typename T>
+void frameData::lineData::gatherLines_scalar(const T* in) {
+	for (unsigned long long i = 0; i < xIndexes.size(); i++) {
+
+		int x = xIndexes[i];
+		int y = yIndexes[i];
+
+		for (int component = 0; component < 3; component++) {
+			auto compInPtr = in + (width * width * component);
+			inTopLine[component][i] = compInPtr[x + y * width];
+			inBotLine[component][i] = compInPtr[x + (width - 1 - y) * width];
+		}
+
+	}
+	//margins
+	for (int i = 0; i < taps / 2; i++) {
+		auto leftOffset = (i - tapsOffset) % len;
+		leftOffset += leftOffset < 0 ? len : 0;
+		auto rightOffset = (len + i) % len;
+		rightOffset += rightOffset < 0 ? len : 0;
+		for (int component = 0; component < 3; component++) {
+			inTopLine[component][i - tapsOffset] = inTopLine[component][leftOffset];
+			inTopLine[component][i + len] = inTopLine[component][rightOffset];
+			inBotLine[component][i - tapsOffset] = inBotLine[component][leftOffset];
+			inBotLine[component][i + len] = inBotLine[component][rightOffset];
+		}
+	}
+}
+
+void frameData::lineData::interpLines_scalar(void) {
+
+	const int Lj = len / 2;
+
+	for (int i = 0; i < width; i++) {
+
+		float sumTR[3] = { 0.0, 0.0 , 0.0 },
+			sumTL[3] = { 0.0, 0.0 , 0.0 },
+			sumBR[3] = { 0.0, 0.0 , 0.0 },
+			sumBL[3] = { 0.0, 0.0 , 0.0 };
+
+		for (int j = 0; j < taps; j++) {
+			float coeff = coeffs[j][i];
+			for (int component = 0; component < 3; component++) {
+				sumTL[component] += inTopLine[component][lineIndexes[i] + j - tapsOffset] * coeff;
+				sumTR[component] += inTopLine[component][lineIndexes[i] + j - tapsOffset + Lj] * coeff;
+				sumBL[component] += inBotLine[component][lineIndexes[i] + j - tapsOffset] * coeff;
+				sumBR[component] += inBotLine[component][lineIndexes[i] + j - tapsOffset + Lj] * coeff;
+			}
+		}
+
+		for (int component = 0; component < 3; component++) {
+			outTopLine[component][i] = std::round(sumTL[component]);
+			outTopLine[component][i] = std::round(sumTL[component + width]);
+			outBotLine[component][i] = std::round(sumTL[component]);
+			outBotLine[component][i] = std::round(sumTL[component + width]);
+		}
+	}
+}
+
+template<typename T>
+void frameData::lineData::storeLines_scalar(T* out) {
+	for (int i = 0; i < width * 2; ++i) {
+		for (int component = 0; component < 3; component++) {
+			auto compOutPtr = out + (width * width * 2 * component);
+			compOutPtr[i + outTopOffset] = std::max(std::min(outTopLine[component][i], (1 << parent.bitPerSubPixel) - 1), 0);
+			compOutPtr[i + outBotOffset] = std::max(std::min(outBotLine[component][i], (1 << parent.bitPerSubPixel) - 1), 0);
+		}
+	}
+}
 
 void frameData::lineData::constructGatherLUT(void) {
 

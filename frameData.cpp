@@ -97,6 +97,37 @@ void frameData::expandUV(uint16_t* data, int dim) {
 
 }
 
+template<typename T>
+void frameData::expandUV_scalar(T* data, int dim) {
+
+	struct wrapper {
+		T* data;
+		size_t dim;
+		wrapper(T* data, const size_t dim) : data(data), dim(dim) {};
+		T& at(const size_t x, const size_t y, const size_t comp) { return data[x + y * dim + (dim * dim * comp)]; };
+	};
+
+	auto temp = new T[dim * dim / 2];
+	std::memcpy(temp, data, dim * dim / 2);
+	wrapper input(temp, dim / 2);
+	wrapper output(data, dim);
+
+
+	for (int y = 0; y < dim / 2; y++) {
+		for (int x = 0; x < dim / 2; ++x) {
+			for (int comp = 0; comp < 2; comp++)
+				output.at(2 * x, 2 * y, comp) =
+				output.at(2 * x + 1, 2 * y, comp) =
+				output.at(2 * x, 2 * y + 1, comp) =
+				output.at(2 * x + 1, 2 * y + 1, comp) =
+				input.at(x, y, comp);
+		}
+	}
+
+	delete[] temp;
+
+}
+
 void frameData::buildFrameCoeffs(void) {
 	for (auto& line : lines)
 		line.buildLineCoeffs();
