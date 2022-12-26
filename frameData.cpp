@@ -13,6 +13,7 @@ frameData::~frameData() {
 	lines.clear();
 }
 
+#if INSTRSET >= 8 // AVX2
 template<>
 void frameData::expandUV(uint8_t* data, int dim) {
 
@@ -96,9 +97,9 @@ void frameData::expandUV(uint16_t* data, int dim) {
 	delete[] temp;
 
 }
-
+#else
 template<typename T>
-void frameData::expandUV_scalar(T* data, int dim) {
+void frameData::expandUV(T* data, int dim) {
 
 	struct wrapper {
 		T* data;
@@ -127,6 +128,11 @@ void frameData::expandUV_scalar(T* data, int dim) {
 	delete[] temp;
 
 }
+
+template void frameData::expandUV(uint8_t* data, int dim);
+template void frameData::expandUV(uint16_t* data, int dim);
+
+#endif
 
 void frameData::buildFrameCoeffs(void) {
 	for (auto& line : lines)

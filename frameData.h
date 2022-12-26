@@ -9,8 +9,12 @@
 #include <vector>
 #include <array>
 
+#include "instrset.h"
+
+#if INSTRSET >= 8 // AVX2
 #include "vectormath_hyp.h"
 #include "vectormath_trig.h"
+#endif
 
 #include "ThreadExecutor.h"
 
@@ -44,9 +48,6 @@ struct frameData : public ThreadedExecutor {
 	template<typename T>
 	static void expandUV(T* data, int dim);
 
-	template<typename T>
-	static void expandUV_scalar(T* data, int dim);
-
 	const bitPerSubPixel_t bitPerSubPixel;
 
 protected:
@@ -59,7 +60,7 @@ protected:
 
 		virtual ~lineData();
 
-		virtual void processLine(const void* in, void* out);
+		void processLine(const void* in, void* out);
 
 		void buildLineCoeffs(void);
 
@@ -72,18 +73,12 @@ protected:
 		template<typename T>
 		void storeLines(T* out);
 
-		template<typename T>
-		void gatherLines_scalar(const T* in);
-
-		virtual void interpLines_scalar(void);
-
-		template<typename T>
-		void storeLines_scalar(T* out);
-
 		void constructGatherLUT(void);
 
+#if INSTRSET >= 8 // AVX2
 		template<typename T>
 		void store2out(const int* in, T* out, int length);
+#endif
 
 	public:
 		const int len;

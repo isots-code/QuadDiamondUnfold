@@ -23,7 +23,7 @@ int main(int argc, char** argv) {
 		else {
 			switch (std::atoi(argv[2])) {
 				case 1:
-					dataLookup = new nearest(dim, frameData::BITS_8);
+					dataLookup = new nearest(dim, frameData::BITS_8, 1);
 					break;
 				case 2:
 					dataLookup = new linear(dim, frameData::BITS_8);

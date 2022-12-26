@@ -162,6 +162,7 @@ struct lanczosN : public frameData {
 	}
 };
 
+#if INSTRSET >= 8 // AVX2
 void centripetalCatMullRomInterpolation(typename frameDataCustom::lineDataCustom& self, const int i, const float* __restrict in, int* __restrict out) {
 
 	const Vec8f Dj((self.len / 2) / (double)self.width);
@@ -188,3 +189,28 @@ void centripetalCatMullRomInterpolation(typename frameDataCustom::lineDataCustom
 	}(x_1, x0, x1, x2, x);
 	roundi(res).store(out + i);
 }
+#else
+void centripetalCatMullRomInterpolation(typename frameDataCustom::lineDataCustom& self, const int i, const float* __restrict in, int* __restrict out) {
+
+	const float Dj = ((self.len / 2) / (double)self.width);
+	float x = Dj * i;
+	float x_floor = std::floor(x);
+	x -= x_floor;
+	int x_int = x_floor;
+
+	float x0 = in[x_int - 1];
+	float x1 = in[x_int + 0];
+	float x2 = in[x_int + 1];
+	float x3 = in[x_int + 2];
+
+	float t01 = std::pow((x1 - x0) * (x1 - x0) + 1.0, 0.25f);
+	float t12 = std::pow((x2 - x1) * (x2 - x1) + 1.0, 0.25f);
+	float t23 = std::pow((x3 - x2) * (x3 - x2) + 1.0, 0.25f);
+	float m1 = (x2 - x1 + t12 * ((x1 - x0) / t01 - (x2 - x0) / (t01 + t12)));
+	float m2 = (x2 - x1 + t12 * ((x3 - x2) / t23 - (x3 - x1) / (t12 + t23)));
+	float res = (x1 + x * (m1 - x * (2.0 * m1 + m2 + 3.0 * x1 - 3.0 * x2 - x * (m1 + m2 + 2.0 * x1 - 2.0 * x2))));
+	//float res = (2.0f * (x1 - x2) + m1 + m2) * x * x * x + (-3.0f * (x1 - x2) - m1 - m1 - m2) * x * x + (m1) * x + (x1);
+	
+	out[i] = std::round(res);
+}
+#endif

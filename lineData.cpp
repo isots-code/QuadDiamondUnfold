@@ -5,6 +5,7 @@
 #include "extras.h"
 #include "frameData.h"
 
+#if INSTRSET >= 8 // AVX2
 frameData::lineData::lineData(frameData& parent, int y, int width)
 	: len(y * 4 + 2), width(width), y(y), dim(parent.dim), taps(parent.taps), linePad(Vec8i::size()), paddedLen((len / linePad)* linePad + linePad),
 	tapsOffset(-(taps / 2 - taps + 1)), outTopOffset(y* (width * 2)), outBotOffset((width - 1 - y)* (width * 2)), parent(parent) {
@@ -16,6 +17,19 @@ frameData::lineData::lineData(frameData& parent, int y, int width)
 		subCoeffs.resize(width);
 	constructGatherLUT();
 }
+#else
+frameData::lineData::lineData(frameData& parent, int y, int width)
+	: len(y * 4 + 2), width(width), y(y), dim(parent.dim), taps(parent.taps), linePad(1), paddedLen((len / linePad)* linePad + linePad),
+	tapsOffset(-(taps / 2 - taps + 1)), outTopOffset(y* (width * 2)), outBotOffset((width - 1 - y)* (width * 2)), parent(parent) {
+	xIndexes.resize(paddedLen);
+	yIndexes.resize(paddedLen);
+	lineIndexes.resize(width);
+	coeffs.resize(taps);
+	for (auto& subCoeffs : coeffs)
+		subCoeffs.resize(width);
+	constructGatherLUT();
+}
+#endif
 
 frameData::lineData::~lineData() {
 	xIndexes.clear();
@@ -56,6 +70,7 @@ void frameData::lineData::processLine(const void* in, void* out) {
 	}
 }
 
+#if INSTRSET >= 8 // AVX2
 template<typename T>
 void frameData::lineData::gatherLines(const T* in) {
 	for (unsigned long long i = 0; i < xIndexes.size(); i += Vec8us::size()) {
@@ -127,18 +142,18 @@ void frameData::lineData::storeLines(T* out) {
 }
 
 template void frameData::lineData::storeLines(uint8_t* out); //????
-
+#else
 template<typename T>
-void frameData::lineData::gatherLines_scalar(const T* in) {
+void frameData::lineData::gatherLines(const T* in) {
 	for (unsigned long long i = 0; i < xIndexes.size(); i++) {
 
-		int x = xIndexes[i];
-		int y = yIndexes[i];
+		int x_access = xIndexes[i];
+		int y_access = yIndexes[i];
 
 		for (int component = 0; component < 3; component++) {
 			auto compInPtr = in + (width * width * component);
-			inTopLine[component][i] = compInPtr[x + y * width];
-			inBotLine[component][i] = compInPtr[x + (width - 1 - y) * width];
+			inTopLine[component][i] = compInPtr[x_access + y_access * width];
+			inBotLine[component][i] = compInPtr[x_access + (width - 1 - y_access) * width];
 		}
 
 	}
@@ -157,7 +172,7 @@ void frameData::lineData::gatherLines_scalar(const T* in) {
 	}
 }
 
-void frameData::lineData::interpLines_scalar(void) {
+void frameData::lineData::interpLines(void) {
 
 	const int Lj = len / 2;
 
@@ -179,16 +194,16 @@ void frameData::lineData::interpLines_scalar(void) {
 		}
 
 		for (int component = 0; component < 3; component++) {
-			outTopLine[component][i] = std::round(sumTL[component]);
-			outTopLine[component][i] = std::round(sumTL[component + width]);
-			outBotLine[component][i] = std::round(sumTL[component]);
-			outBotLine[component][i] = std::round(sumTL[component + width]);
+			outTopLine[component][i] = sumTL[component] + 0.5f;
+			outTopLine[component][i + width] = sumTR[component] + 0.5f;
+			outBotLine[component][i] = sumBL[component] + 0.5f;
+			outBotLine[component][i + width] = sumBR[component] + 0.5f;
 		}
 	}
 }
 
 template<typename T>
-void frameData::lineData::storeLines_scalar(T* out) {
+void frameData::lineData::storeLines(T* out) {
 	for (int i = 0; i < width * 2; ++i) {
 		for (int component = 0; component < 3; component++) {
 			auto compOutPtr = out + (width * width * 2 * component);
@@ -197,6 +212,7 @@ void frameData::lineData::storeLines_scalar(T* out) {
 		}
 	}
 }
+#endif
 
 void frameData::lineData::constructGatherLUT(void) {
 
@@ -219,7 +235,7 @@ void frameData::lineData::constructGatherLUT(void) {
 
 	const double Dj = Lj / (double)width;
 	for (int x = 0; x < width; x++)
-		lineIndexes[x] = floor(Dj * x);
+		lineIndexes[x] = std::floor(Dj * x);
 }
 
 void frameData::lineData::buildLineCoeffs(void) {
@@ -234,6 +250,7 @@ void frameData::lineData::buildLineCoeffs(void) {
 	}
 }
 
+#if INSTRSET >= 8 // AVX2
 template<>
 void frameData::lineData::store2out(const int* in, uint8_t* out, int length) {
 	int i = 0;
@@ -271,3 +288,5 @@ void frameData::lineData::store2out(const int* in, uint16_t* out, int length) {
 
 	return;
 }
+
+#endif

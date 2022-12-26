@@ -3,8 +3,12 @@
 #include <immintrin.h>
 #undef __AVX512F__
 
+#include "instrset.h"
+
+#if INSTRSET >= 8 // AVX2
 #include "vectormath_hyp.h"
 #include "vectormath_trig.h"
+
 
 template <typename T>
 Vec8f gather(const T* in, const Vec8i index) {
@@ -15,3 +19,5 @@ Vec8f gather(const T* in, const Vec8i index) {
 		return to_float(mask & _mm256_i32gather_epi32(in, index, sizeof(*in)));
 	}
 }
+
+#endif

@@ -24,8 +24,6 @@ struct frameDataCustom final : public frameData {
 
         lineDataCustom(frameDataCustom& parent, int y, int width);
 
-        void processLine(const void* in, void* out) final;
-
     private:
         void interpLines(void) final;
 
