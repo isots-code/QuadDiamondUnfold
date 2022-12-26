@@ -1,4 +1,9 @@
 # QuadDiamondUnfold
+
+# NEW (26-12-22)
+
+Scalar code has been added, so its now possible to run on stuff older then Haswell, although, not recommended as the performance is weak.
+For comparison, my R7 5700x can do around 250 FPS on a 4k + 2k frame size, my old i7 4720HQ can only do 55 IIRC.
  
 # What's this?
 
@@ -20,7 +25,7 @@ Later, i will add code to do the transformation (but not a fast one) so you can 
 
 This also is for me to get a bit more hands on with C++ and SIMD in x86 since my main language till a few months ago was embedded C.
 
-Right now, it doesn't support processores earlier then Haswell cause it needs AVX2 instructions.
+~~Right now, it doesn't support processores earlier then Haswell cause it needs AVX2 instructions.~~
 
 This depends on [Agner Fog's VCL library](https://github.com/vectorclass/version2)
 
