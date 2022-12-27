@@ -11,10 +11,10 @@ frameData::lineData::lineData(frameData& parent, int y)
 	tapsOffset(-(taps / 2 - taps + 1)), outTopOffset(y * width), outBotOffset((height - 1 - y)* width), parent(parent) {
 	xIndexes.resize(paddedLen);
 	yIndexes.resize(paddedLen);
-	lineIndexes.resize(height);
+	lineIndexes.resize(op ? width / 2 : 0);
 	coeffs.resize(taps);
 	for (auto& subCoeffs : coeffs)
-		subCoeffs.resize(height);
+		subCoeffs.resize(op ? len : width / 2);
 	op ? constructScatterLUT() : constructGatherLUT();
 }
 #else
@@ -23,10 +23,10 @@ frameData::lineData::lineData(frameData& parent, int y)
 	tapsOffset(-(taps / 2 - taps + 1)), outTopOffset(y* width), outBotOffset((height - 1 - y)* width), parent(parent) {
 	xIndexes.resize(paddedLen);
 	yIndexes.resize(paddedLen);
-	lineIndexes.resize(height);
+	lineIndexes.resize(op ? width / 2 : 0);
 	coeffs.resize(taps);
 	for (auto& subCoeffs : coeffs)
-		subCoeffs.resize(height);
+		subCoeffs.resize(op ? len : width / 2);
 	op ? constructScatterLUT() : constructGatherLUT();
 }
 #endif
@@ -115,7 +115,7 @@ void frameData::lineData::buildDecompressLineCoeffs(void) {
 void frameData::lineData::buildCompressLineCoeffs(void) {
 
 	const double distanceJ = len / (double)width;
-	for (int x = 0; x < height; x++) {
+	for (int x = 0; x < len; x++) {
 		auto x_ = distanceJ * x;
 		x_ -= floor(x_);
 		auto coeff = parent.coeffsFunc(x_);
@@ -339,9 +339,9 @@ void frameData::lineData::interpLinesCompression(void) {
 			for (int j = 0; j < taps; j++) {
 				float coeff = coeffs[j][i];
 				int x_access = j - tapsOffset;
-				x_access += (x_access < 0) * width;
-				x_access -= (x_access >= width) * width;
-				if ((x_access < 0) || (x_access >= width)) x_access = x_access % width;
+				x_access += (x_access < 0) * len;
+				x_access -= (x_access >= len) * len;
+				if ((x_access < 0) || (x_access >= len)) x_access = x_access % len;
 				for (int component = 0; component < 3; component++) {
 					sumTop[component] += inTopLine[component][x_access] * coeff;
 					sumBot[component] += inBotLine[component][x_access] * coeff;
@@ -362,9 +362,9 @@ void frameData::lineData::storeLinesCompression(T* out) {
 		int x_access = xIndexes[i];
 		int y_access = yIndexes[i];
 		for (int component = 0; component < 3; component++) {
-			auto compOutPtr = out + (width * height * component);
-			compOutPtr[i + x_access + y_access * width] = std::max(std::min(outTopLine[component][i], (1 << parent.bitPerSubPixel) - 1), 0);
-			compOutPtr[i + x_access + (width - 1 - y_access) * height] = std::max(std::min(outBotLine[component][i], (1 << parent.bitPerSubPixel) - 1), 0);
+			T* compOutPtr = out + (width * height * component);
+			compOutPtr[i + x_access + y_access * height] = std::max(std::min(outTopLine[component][i], (1 << parent.bitPerSubPixel) - 1), 0);
+			compOutPtr[i + x_access + (height - 1 - y_access) * height] = std::max(std::min(outBotLine[component][i], (1 << parent.bitPerSubPixel) - 1), 0);
 		}
 	}
 }
@@ -389,7 +389,7 @@ void frameData::lineData::constructGatherLUT(void) {
 	}
 
 	const double Dj = Lj / (double)height;
-	for (int x = 0; x < height; x++)
+	for (int x = 0; x < width / 2; x++)
 		lineIndexes[x] = std::floor(Dj * x);
 }
 
@@ -413,7 +413,7 @@ void frameData::lineData::constructScatterLUT(void) {
 	}
 
 	const double Dj = Lj / (double)height;
-	for (int x = 0; x < height; x++)
+	for (int x = 0; x < width / 2; x++)
 		lineIndexes[x] = std::floor(Dj * x);
 }
 

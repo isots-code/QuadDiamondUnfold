@@ -70,8 +70,8 @@ void frameData::expandUV(uint16_t* data, int width, int height) {
 		uint16_t& at(const size_t x, const size_t y, const size_t comp) { return data[x + y * size + (size * size * comp)]; };
 	};
 
-	auto temp = new uint16_t[(width / 2) * (height / 2)];
-	std::memcpy(temp, data, (width / 2)* (height / 2));
+	auto temp = new uint16_t[(width / 2) * (height / 2) * 2];
+	std::memcpy(temp, data, (width / 2)* (height / 2) * 2);
 	wrapper input(temp, height / 2);
 	wrapper output(data, height);
 
@@ -112,8 +112,8 @@ void frameData::expandUV(T* data, int width, int height) {
 		T& at(const size_t x, const size_t y, const size_t comp) { return data[x + y * size + (size * size * comp)]; };
 	};
 
-	auto temp = new T[(width / 2) * (height / 2)];
-	std::memcpy(temp, data, (width / 2) * (height / 2));
+	auto temp = new T[(width / 2) * (height / 2) * 2];
+	std::memcpy(temp, data, (width / 2) * (height / 2) * 2);
 	wrapper input(temp, height / 2);
 	wrapper output(data, height);
 
