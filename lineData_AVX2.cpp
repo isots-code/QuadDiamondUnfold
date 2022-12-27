@@ -149,26 +149,24 @@ void frameData::lineData::interpLinesCompression_AVX2(void) {
 			}
 		}
 	} else {
-		for (int i = 0; i < lenghtJ; i++) {
+		for (int i = 0; i < lenghtJ; i += Vec8f::size()) {
 
-			float sumTop[3] = { 0.5f, 0.5f, 0.5f },
-				sumBot[3] = { 0.5f, 0.5f, 0.5f };
+			Vec8f sumTop[3] = { Vec8f(0.5f), Vec8f(0.5f) , Vec8f(0.5f) },
+				sumBot[3] = { Vec8f(0.5f), Vec8f(0.5f) , Vec8f(0.5f) };
 
 			for (int j = 0; j < taps; j++) {
-				float coeff = coeffs[j][i];
-				int x_access = i + j - tapsOffset;
-				x_access += (x_access < 0) * lenghtJ;
-				x_access -= (x_access >= lenghtJ) * lenghtJ;
-				if ((x_access < 0) || (x_access >= lenghtJ)) x_access = x_access % lenghtJ;
+				Vec8f coeff = Vec8f().load(&coeffs[j][i]);
+				Vec8i x_access = (i + j - tapsOffset) + Vec8i(0, 1, 2, 3, 4, 5, 6, 7);
+				Vec8i baseIndex(x_access[i]);
 				for (int component = 0; component < 3; component++) {
-					sumTop[component] += inTopLine[component][x_access] * coeff;
-					sumBot[component] += inBotLine[component][x_access] * coeff;
+					sumTop[component] += lookup8(x_access - baseIndex, Vec8f().load(inTopLine[component] + x_access[i])) * coeff;
+					sumBot[component] += lookup8(x_access - baseIndex, Vec8f().load(inBotLine[component] + x_access[i])) * coeff;
 				}
 			}
 
 			for (int component = 0; component < 3; component++) {
-				outTopLine[component][i] = sumTop[component];
-				outBotLine[component][i] = sumBot[component];
+				truncatei(sumTop[component]).store(&(outTopLine[component][i]));
+				truncatei(sumBot[component]).store(&(outBotLine[component][i]));
 			}
 		}
 	}
