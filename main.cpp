@@ -14,9 +14,7 @@ int main(int argc, char** argv) {
 	try {
 		auto decoder = ffmpegDecode(input);
 		
-		bool op = 0; //0 decompression, 1 compression
-		if (argv[2])
-			op = std::atoi(argv[2]);
+		bool op = decoder.getOp();
 
 		int interp = -1;
 		if (argv[3])

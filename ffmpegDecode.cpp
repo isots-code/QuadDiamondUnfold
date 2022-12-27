@@ -100,6 +100,10 @@ int ffmpegDecode::getDim(void) {
 	return codec_ctx->height;
 }
 
+bool ffmpegDecode::getOp(void) {
+	return !(codec_ctx->height == codec_ctx->width);
+}
+
 void ffmpegDecode::startDecode(void) {
 	decodeThread = std::thread(&ffmpegDecode::decodeLoop, this);
 }

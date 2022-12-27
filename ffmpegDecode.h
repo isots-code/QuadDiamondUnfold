@@ -22,6 +22,8 @@ struct ffmpegDecode {
 
 	int getDim(void);
 
+	bool getOp(void);
+
 	void startDecode(void);
 
 	void decodeLoop(void);
