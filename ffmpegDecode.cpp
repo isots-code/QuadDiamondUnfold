@@ -136,7 +136,7 @@ void ffmpegDecode::decodeLoop(void) {
 					break;
 				case AV_PIX_FMT_YUV420P:
 					ret = av_image_copy_to_buffer(reinterpret_cast<uint8_t*>(buffers[currentBuffer].data()), codec_ctx->width * codec_ctx->height * 3 / 2, frame->data, frame->linesize, AV_PIX_FMT_YUV420P, codec_ctx->width, codec_ctx->height, 1);
-					frameData::expandUV(buffers[currentBuffer].data() + codec_ctx->height * codec_ctx->height, codec_ctx->height);
+					frameData::expandUV(buffers[currentBuffer].data() + codec_ctx->width * codec_ctx->height, codec_ctx->width, codec_ctx->height);
 					break;
 				default:
 					throw std::runtime_error("Unsuported pixel format");

@@ -1,14 +1,16 @@
 #include "frameData.h"
 
-frameData::frameData(int dim, int taps, bitPerSubPixel_t bits, interpFunc_t interp, int numThreads) : ThreadedExecutor(dim, numThreads), bitPerSubPixel(bits), dim(dim), taps(taps), interp(interp) {
-	lines.reserve(dim / 2);
-	for (int i = 0; i < dim / 2; i++)
-		lines.emplace_back(*this, i, dim);
+frameData::frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, interpFunc_t interp, int numThreads)
+	: ThreadedExecutor(dim, numThreads), bitPerSubPixel(bits), op(op), taps(taps),
+		width(2 * dim), height(dim), interp(interp) {
+	lines.reserve(height / 2);
+	for (int i = 0; i < height / 2; i++)
+		lines.emplace_back(*this, i);
 }
 
-frameData::frameData(int dim, int taps, bitPerSubPixel_t bits, interpFunc_t interp) : frameData(dim, taps, bits, interp, std::thread::hardware_concurrency()) {}
-frameData::frameData(int dim, int taps, bitPerSubPixel_t bits, int numThreads) : frameData(dim, taps, bits, nullptr, numThreads) {}
-frameData::frameData(int dim, int taps, bitPerSubPixel_t bits) : frameData(dim, taps, bits, nullptr, std::thread::hardware_concurrency()) {}
+frameData::frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, interpFunc_t interp) : frameData(op, dim, taps, bits, interp, std::thread::hardware_concurrency()) {}
+frameData::frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, int numThreads) : frameData(op, dim, taps, bits, nullptr, numThreads) {}
+frameData::frameData(bool op, int dim, int taps, bitPerSubPixel_t bits) : frameData(op, dim, taps, bits, nullptr, std::thread::hardware_concurrency()) {}
 
 frameData::~frameData() {
 	this->stop();
@@ -17,25 +19,25 @@ frameData::~frameData() {
 
 #if INSTRSET >= 8 // AVX2
 template<>
-void frameData::expandUV(uint8_t* data, int dim) {
+void frameData::expandUV(uint8_t* data, int width, int height) {
 
 	struct wrapper {
 		uint8_t* data;
-		size_t dim;
-		wrapper(uint8_t* data, const size_t dim) : data(data), dim(dim) {};
-		uint8_t& at(const size_t x, const size_t y, const size_t comp) { return data[x + y * dim + (dim * dim * comp)]; };
+		size_t size;
+		wrapper(uint8_t* data, const size_t size) : data(data), size(size) {};
+		uint8_t& at(const size_t x, const size_t y, const size_t comp) { return data[x + y * size + (size * size * comp)]; };
 	};
 
-	auto temp = new uint8_t[dim * dim / 2];
-	std::memcpy(temp, data, dim * dim / 2);
-	wrapper input(temp, dim / 2);
-	wrapper output(data, dim);
+	auto temp = new uint8_t[(width / 2) * (height / 2) * 2];
+	std::memcpy(temp, data, (width / 2) * (height / 2) * 2);
+	wrapper input(temp, height / 2);
+	wrapper output(data, height);
 
 	const Vec32uc LUT(0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15);
 
-	for (int y = 0; y < dim / 2; y++) {
+	for (int y = 0; y < width / 2; y++) {
 		int x = 0;
-		for (; x < (dim / 2) - (Vec16uc::size() - 1); x += Vec16uc::size()) {
+		for (; x < (height / 2) - (Vec16uc::size() - 1); x += Vec16uc::size()) {
 			for (int comp = 0; comp < 2; comp++) {
 				Vec32uc in(Vec16uc().load(&input.at(x, y, comp)), Vec16uc());
 				Vec32uc out(lookup32(LUT, in));
@@ -44,7 +46,7 @@ void frameData::expandUV(uint8_t* data, int dim) {
 			}
 		}
 
-		for (; x < dim / 2; ++x) {
+		for (; x < height / 2; ++x) {
 			for (int comp = 0; comp < 2; comp++)
 				output.at(2 * x, 2 * y, comp) =
 				output.at(2 * x + 1, 2 * y, comp) =
@@ -59,25 +61,25 @@ void frameData::expandUV(uint8_t* data, int dim) {
 }
 
 template<>
-void frameData::expandUV(uint16_t* data, int dim) {
+void frameData::expandUV(uint16_t* data, int width, int height) {
 
 	struct wrapper {
 		uint16_t* data;
-		size_t dim;
-		wrapper(uint16_t* data, const size_t dim) : data(data), dim(dim) {};
-		uint16_t& at(const size_t x, const size_t y, const size_t comp) { return data[x + y * dim + (dim * dim * comp)]; };
+		size_t size;
+		wrapper(uint16_t* data, const size_t size) : data(data), size(size) {};
+		uint16_t& at(const size_t x, const size_t y, const size_t comp) { return data[x + y * size + (size * size * comp)]; };
 	};
 
-	auto temp = new uint16_t[dim * dim / 2];
-	std::memcpy(temp, data, dim * dim / 2);
-	wrapper input(temp, dim / 2);
-	wrapper output(data, dim);
+	auto temp = new uint16_t[(width / 2) * (height / 2)];
+	std::memcpy(temp, data, (width / 2)* (height / 2));
+	wrapper input(temp, height / 2);
+	wrapper output(data, height);
 
 	const Vec16us LUT(0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7);
 
-	for (int y = 0; y < dim / 2; y++) {
+	for (int y = 0; y < width / 2; y++) {
 		int x = 0;
-		for (; x < (dim / 2) - (Vec8us::size() - 1); x += Vec8us::size()) {
+		for (; x < (height / 2) - (Vec8us::size() - 1); x += Vec8us::size()) {
 			for (int comp = 0; comp < 2; comp++) {
 				Vec16us in(Vec8us().load(&input.at(x, y, comp)), Vec8us());
 				Vec16us out(lookup16(LUT, in));
@@ -86,7 +88,7 @@ void frameData::expandUV(uint16_t* data, int dim) {
 			}
 		}
 
-		for (; x < dim / 2; ++x) {
+		for (; x < height / 2; ++x) {
 			for (int comp = 0; comp < 2; comp++)
 				output.at(2 * x, 2 * y, comp) =
 				output.at(2 * x + 1, 2 * y, comp) =
@@ -101,23 +103,22 @@ void frameData::expandUV(uint16_t* data, int dim) {
 }
 #else
 template<typename T>
-void frameData::expandUV(T* data, int dim) {
+void frameData::expandUV(T* data, int width, int height) {
 
 	struct wrapper {
 		T* data;
-		size_t dim;
-		wrapper(T* data, const size_t dim) : data(data), dim(dim) {};
-		T& at(const size_t x, const size_t y, const size_t comp) { return data[x + y * dim + (dim * dim * comp)]; };
+		size_t size;
+		wrapper(T* data, const size_t size) : data(data), size(size) {};
+		T& at(const size_t x, const size_t y, const size_t comp) { return data[x + y * size + (size * size * comp)]; };
 	};
 
-	auto temp = new T[dim * dim / 2];
-	std::memcpy(temp, data, dim * dim / 2);
-	wrapper input(temp, dim / 2);
-	wrapper output(data, dim);
+	auto temp = new T[(width / 2) * (height / 2)];
+	std::memcpy(temp, data, (width / 2) * (height / 2));
+	wrapper input(temp, height / 2);
+	wrapper output(data, height);
 
-
-	for (int y = 0; y < dim / 2; y++) {
-		for (int x = 0; x < dim / 2; ++x) {
+	for (int y = 0; y < width / 2; y++) {
+		for (int x = 0; x < height / 2; ++x) {
 			for (int comp = 0; comp < 2; comp++)
 				output.at(2 * x, 2 * y, comp) =
 				output.at(2 * x + 1, 2 * y, comp) =
@@ -131,19 +132,19 @@ void frameData::expandUV(T* data, int dim) {
 
 }
 
-template void frameData::expandUV(uint8_t* data, int dim);
-template void frameData::expandUV(uint16_t* data, int dim);
+template void frameData::expandUV(uint8_t* data, int width, int height);
+template void frameData::expandUV(uint16_t* data, int width, int height);
 
 #endif
 
 void frameData::buildFrameCoeffs(void) {
 	for (auto& line : lines)
-		line.buildLineCoeffs();
+		op ? line.buildCompressLineCoeffs() : line.buildDecompressLineCoeffs();
 }
 
 void frameData::kernel(const int id) {
-	for (int i = id; i < dim / 2; i += this->numThreads) // topo e fundo por iteração
-		lines[i].processLine(this->input, this->output);
+	for (int i = id; i < height / 2; i += this->numThreads) // topo e fundo por iteração
+		op ? lines[i].compressLine(this->input, this->output) : lines[i].decompressLine(this->input, this->output);
 };
 
 std::vector<float> frameData::coeffsFunc(double x) {

@@ -37,17 +37,17 @@ struct frameData : public ThreadedExecutor {
 public:
 	typedef void (*interpFunc_t)(frameData::lineData& self, const int x, const float* __restrict in, int* __restrict out);
 	
-	frameData(int dim, int taps, bitPerSubPixel_t bits, interpFunc_t interp, int numThread);
-	frameData(int dim, int taps, bitPerSubPixel_t bits, interpFunc_t interp);
-	frameData(int dim, int taps, bitPerSubPixel_t bits, int numThreads);
-	frameData(int dim, int taps, bitPerSubPixel_t bits);
+	frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, interpFunc_t interp, int numThread);
+	frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, interpFunc_t interp);
+	frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, int numThreads);
+	frameData(bool op, int dim, int taps, bitPerSubPixel_t bits);
 
 	frameData() = delete;
 
 	virtual ~frameData();
 
 	template<typename T>
-	static void expandUV(T* data, int dim);
+	static void expandUV(T* data, int width, int height);
 
 	void buildFrameCoeffs(void);
 
@@ -59,26 +59,40 @@ public:
 
 	struct lineData {
 
-		lineData(frameData& parent, int y, int height);
+		lineData(frameData& parent, int y);
 
 		lineData() = delete;
 
-		~lineData();
+		virtual ~lineData();
 
-		virtual void processLine(const void* in, void* out);
+		virtual void decompressLine(const void* in, void* out);
 
-		void buildLineCoeffs(void);
+		virtual void compressLine(const void* in, void* out);
+
+		void buildDecompressLineCoeffs(void);
+
+		void buildCompressLineCoeffs(void);
 
 	protected:
 		template<typename T>
-		void gatherLines(const T* in);
+		void gatherLinesDecompression(const T* in);
 
-		virtual void interpLines(void);
+		virtual void interpLinesDecompression(void);
 
 		template<typename T>
-		void storeLines(T* out);
+		void storeLinesDecompression(T* out);
+
+		template<typename T>
+		void gatherLinesCompression(const T* in);
+
+		virtual void interpLinesCompression(void);
+
+		template<typename T>
+		void storeLinesCompression(T* out);
 
 		virtual void constructGatherLUT(void);
+
+		virtual void constructScatterLUT(void);
 
 #if INSTRSET >= 8 // AVX2
 		template<typename T>
@@ -86,13 +100,13 @@ public:
 #endif
 
 	public:
+		const bool op;
 		const int len;
 		const int width;
 		const int height;
 
 	protected:
 		const int y;
-		const int dim;
 		const int taps;
 		const int linePad;
 		const int paddedLen;
@@ -111,8 +125,10 @@ public:
 
 	};
 
-	const int dim;
+	const bool op;
 	const int taps;
+	const int width;
+	const int height;
 	const interpFunc_t interp;
 	std::vector<lineData> lines;
 };

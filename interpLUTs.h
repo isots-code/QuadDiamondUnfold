@@ -1,14 +1,13 @@
 #pragma once
 
 #include "frameData.h"
-//#include "frameDataCustom.h"
 
 #include <cmath>
 #include <numbers>
 
 struct nearest : public frameData {
-	nearest(int dim, bitPerSubPixel_t bits) : frameData(dim, 1, bits) { buildFrameCoeffs(); };
-	nearest(int dim, bitPerSubPixel_t bits, int numThreads) : frameData(dim, 1, bits, numThreads) { buildFrameCoeffs(); };
+	nearest(bool op, int dim, bitPerSubPixel_t bits) : frameData(op, dim, 1, bits) { buildFrameCoeffs(); };
+	nearest(bool op, int dim, bitPerSubPixel_t bits, int numThreads) : frameData(op, dim, 1, bits, numThreads) { buildFrameCoeffs(); };
 
 	std::vector<float> coeffsFunc(double x) final {
 		(void)x;
@@ -17,8 +16,8 @@ struct nearest : public frameData {
 };
 
 struct linear : public frameData {
-	linear(int dim, bitPerSubPixel_t bits) : frameData(dim, 2, bits) { buildFrameCoeffs(); };
-	linear(int dim, bitPerSubPixel_t bits, int numThreads) : frameData(dim, 2, bits, numThreads) { buildFrameCoeffs(); };
+	linear(bool op, int dim, bitPerSubPixel_t bits) : frameData(op, dim, 2, bits) { buildFrameCoeffs(); };
+	linear(bool op, int dim, bitPerSubPixel_t bits, int numThreads) : frameData(op, dim, 2, bits, numThreads) { buildFrameCoeffs(); };
 
 	std::vector<float> coeffsFunc(double x) final {
 		auto ret = std::vector<float>(taps, 0.0f);
@@ -29,8 +28,8 @@ struct linear : public frameData {
 };
 
 struct cubic : public frameData {
-	cubic(int dim, bitPerSubPixel_t bits) : frameData(dim, 4, bits) { buildFrameCoeffs(); };
-	cubic(int dim, bitPerSubPixel_t bits, int numThreads) : frameData(dim, 4, bits, numThreads) { buildFrameCoeffs(); };
+	cubic(bool op, int dim, bitPerSubPixel_t bits) : frameData(op, dim, 4, bits) { buildFrameCoeffs(); };
+	cubic(bool op, int dim, bitPerSubPixel_t bits, int numThreads) : frameData(op, dim, 4, bits, numThreads) { buildFrameCoeffs(); };
 
 	std::vector<float> coeffsFunc(double x) final {
 		auto ret = std::vector<float>(taps, 0.0f);
@@ -43,8 +42,8 @@ struct cubic : public frameData {
 };
 
 struct lanczos2 : public frameData {
-	lanczos2(int dim, bitPerSubPixel_t bits) : frameData(dim, 4, bits) { buildFrameCoeffs(); };
-	lanczos2(int dim, bitPerSubPixel_t bits, int numThreads) : frameData(dim, 4, bits, numThreads) { buildFrameCoeffs(); };
+	lanczos2(bool op, int dim, bitPerSubPixel_t bits) : frameData(op, dim, 4, bits) { buildFrameCoeffs(); };
+	lanczos2(bool op, int dim, bitPerSubPixel_t bits, int numThreads) : frameData(op, dim, 4, bits, numThreads) { buildFrameCoeffs(); };
 
 	std::vector<float> coeffsFunc(double x) final {
 		auto ret = std::vector<float>(taps, 0.0f);
@@ -73,8 +72,8 @@ struct lanczos2 : public frameData {
 
 struct lanczos3 : public frameData {
 
-	lanczos3(int dim, bitPerSubPixel_t bits) : frameData(dim, 6, bits) { buildFrameCoeffs(); };
-	lanczos3(int dim, bitPerSubPixel_t bits, int numThreads) : frameData(dim, 6, bits, numThreads) { buildFrameCoeffs(); };
+	lanczos3(bool op, int dim, bitPerSubPixel_t bits) : frameData(op, dim, 6, bits) { buildFrameCoeffs(); };
+	lanczos3(bool op, int dim, bitPerSubPixel_t bits, int numThreads) : frameData(op, dim, 6, bits, numThreads) { buildFrameCoeffs(); };
 
 	std::vector<float> coeffsFunc(double x) final {
 		auto ret = std::vector<float>(taps, 0.0f);
@@ -102,8 +101,8 @@ struct lanczos3 : public frameData {
 };
 
 struct lanczos4 : public frameData {
-	lanczos4(int dim, bitPerSubPixel_t bits) : frameData(dim, 8, bits) { buildFrameCoeffs(); };
-	lanczos4(int dim, bitPerSubPixel_t bits, int numThreads) : frameData(dim, 8, bits, numThreads) { buildFrameCoeffs(); };
+	lanczos4(bool op, int dim, bitPerSubPixel_t bits) : frameData(op, dim, 8, bits) { buildFrameCoeffs(); };
+	lanczos4(bool op, int dim, bitPerSubPixel_t bits, int numThreads) : frameData(op, dim, 8, bits, numThreads) { buildFrameCoeffs(); };
 
 	std::vector<float> coeffsFunc(double x) final {
 		auto ret = std::vector<float>(taps, 0.0f);
@@ -131,8 +130,8 @@ struct lanczos4 : public frameData {
 };
 
 struct lanczosN : public frameData {
-	lanczosN(int dim, int taps, bitPerSubPixel_t bits) : frameData(dim, taps, bits) { buildFrameCoeffs(); };
-	lanczosN(int dim, int taps, bitPerSubPixel_t bits, int numThreads) : frameData(dim, taps, bits, numThreads) { buildFrameCoeffs(); };
+	lanczosN(bool op, int dim, int taps, bitPerSubPixel_t bits) : frameData(op, dim, taps, bits) { buildFrameCoeffs(); };
+	lanczosN(bool op, int dim, int taps, bitPerSubPixel_t bits, int numThreads) : frameData(op, dim, taps, bits, numThreads) { buildFrameCoeffs(); };
 
 	std::vector<float> coeffsFunc(double x) final {
 		auto ret = std::vector<float>(taps, 0.0f);
@@ -163,7 +162,7 @@ struct lanczosN : public frameData {
 };
 
 #if INSTRSET >= 8 // AVX2
-void centripetalCatMullRomInterpolation(typename frameData::lineData& self, const int i, const float* __restrict in, int* __restrict out) {
+void centripetalCatMullRomInterpolation(frameData::lineData& self, const int i, const float* __restrict in, int* __restrict out) {
 
 	const Vec8f Dj((self.len / 2) / (double)self.height);
 	Vec8f x = Dj * (i + Vec8f(0, 1, 2, 3, 4, 5, 6, 7));
@@ -190,9 +189,9 @@ void centripetalCatMullRomInterpolation(typename frameData::lineData& self, cons
 	roundi(res).store(out + i);
 }
 #else
-void centripetalCatMullRomInterpolation(typename frameData::lineData& self, const int i, const float* __restrict in, int* __restrict out) {
+void centripetalCatMullRomInterpolation(frameData::lineData& self, const int i, const float* __restrict in, int* __restrict out) {
 
-	const float Dj = ((self.len / 2) / (double)self.width);
+	const float Dj = self.len / (double)self.width;
 	float x = Dj * i;
 	float x_floor = std::floor(x);
 	x -= x_floor;
