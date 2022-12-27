@@ -5,16 +5,16 @@
 #include "frameData.h"
 
 frameData::lineData::lineData(frameData& parent, int y)
-	: op(parent.op), len(y * 4 + 2), width(parent.width), height(parent.height), 
-	y(y), taps(parent.taps), linePad(instrset_detect() >= 8 ? 8 : 1), paddedLen((len / linePad)* linePad + linePad),
+	: op(parent.op), lenghtJ(y * 4 + 2), width(parent.width), height(parent.height), 
+	y(y), taps(parent.taps), linePad(instrset_detect() >= 8 ? 8 : 1), paddedLen((lenghtJ / linePad)* linePad + linePad),
 	tapsOffset(-(taps / 2 - taps + 1)), outTopOffset(y * width), outBotOffset((height - 1 - y)* width), parent(parent) {
 	xIndexes.resize(paddedLen);
 	yIndexes.resize(paddedLen);
 	lineIndexes.resize(op ? width / 2 : 0);
 	coeffs.resize(taps);
 	for (auto& subCoeffs : coeffs)
-		subCoeffs.resize(op ? len : width / 2);
-	op ? constructScatterLUT() : constructGatherLUT();
+		subCoeffs.resize(op ? lenghtJ : width / 2);
+	constructLUT();
 }
 
 frameData::lineData::~lineData() {
@@ -112,25 +112,29 @@ void frameData::lineData::compressLine(const void* in, void* out) {
 
 void frameData::lineData::buildDecompressLineCoeffs(void) {
 
-	const double distanceJ = len / (double)width;
+	const double distanceJ = lenghtJ / (double)width;
 	for (int x = 0; x < width / 2; x++) {
 		auto x_ = distanceJ * x;
 		x_ -= floor(x_);
-		auto coeff = parent.coeffsFunc(x_);
-		for (int i = 0; i < taps; i++)
-			coeffs[i][x] = coeff[i];
+		if (parent.interp.func) {
+			auto coeff = parent.interp.func(x_, taps);
+			for (int i = 0; i < taps; i++)
+				coeffs[i][x] = coeff[i];
+		}
 	}
 }
 
 void frameData::lineData::buildCompressLineCoeffs(void) {
 
-	const double distanceJ = len / (double)width;
-	for (int x = 0; x < len; x++) {
+	const double distanceJ = lenghtJ / (double)width;
+	for (int x = 0; x < lenghtJ; x++) {
 		auto x_ = distanceJ * x;
 		x_ -= floor(x_);
-		auto coeff = parent.coeffsFunc(x_);
-		for (int i = 0; i < taps; i++)
-			coeffs[i][x] = coeff[i];
+		if (parent.interp.func) {
+			auto coeff = parent.interp.func(x_, taps);
+			for (int i = 0; i < taps; i++)
+				coeffs[i][x] = coeff[i];
+		}
 	}
 }
 
@@ -150,32 +154,31 @@ void frameData::lineData::gatherLinesDecompression(const T* in) {
 	}
 	//margins
 	for (int i = 0; i < taps / 2; i++) {
-		auto leftOffset = (i - tapsOffset) % len;
-		leftOffset += leftOffset < 0 ? len : 0;
-		auto rightOffset = (len + i) % len;
-		rightOffset += rightOffset < 0 ? len : 0;
+		auto leftOffset = (i - tapsOffset) % lenghtJ;
+		leftOffset += leftOffset < 0 ? lenghtJ : 0;
+		auto rightOffset = (lenghtJ + i) % lenghtJ;
+		rightOffset += rightOffset < 0 ? lenghtJ : 0;
 		for (int component = 0; component < 3; component++) {
 			inTopLine[component][i - tapsOffset] = inTopLine[component][leftOffset];
-			inTopLine[component][i + len] = inTopLine[component][rightOffset];
+			inTopLine[component][i + lenghtJ] = inTopLine[component][rightOffset];
 			inBotLine[component][i - tapsOffset] = inBotLine[component][leftOffset];
-			inBotLine[component][i + len] = inBotLine[component][rightOffset];
+			inBotLine[component][i + lenghtJ] = inBotLine[component][rightOffset];
 		}
 	}
 }
 
 void frameData::lineData::interpLinesDecompression(void) {
 
-	const int Lj = len / 2;
+	const int Lj = lenghtJ / 2;
 
 	if (parent.customInterp.func != nullptr) {
 		for (int i = 0; i < width; i++) {
 			for (int component = 0; component < 3; component++) {
-				parent.customInterp.func(len, width, i, inTopLine[component], outTopLine[component]);
-				parent.customInterp.func(len, width, i, inBotLine[component], outBotLine[component]);
+				parent.customInterp.func(lenghtJ, width, i, inTopLine[component], outTopLine[component]);
+				parent.customInterp.func(lenghtJ, width, i, inBotLine[component], outBotLine[component]);
 			}
 		}
 	} else {
-
 		for (int i = 0; i < width / 2; i++) {
 
 			float sumTR[3] = { 0.5f, 0.5f , 0.5f },
@@ -216,9 +219,9 @@ void frameData::lineData::storeLinesDecompression(T* out) {
 
 template<typename T>
 void frameData::lineData::gatherLinesCompression(const T* in) {
-	for (int i = 0; i < len; i++) {
+	for (int i = 0; i < lenghtJ; i++) {
 
-		int x_access = i * (width / (float)len);
+		int x_access = i * (width / (float)lenghtJ);
 
 		for (int component = 0; component < 3; component++) {
 			auto compInPtr = in + (width * height * component);
@@ -230,15 +233,15 @@ void frameData::lineData::gatherLinesCompression(const T* in) {
 
 	//margins
 	for (int i = 0; i < taps / 2; i++) {
-		auto leftOffset = (i - tapsOffset) % len;
-		leftOffset += leftOffset < 0 ? len : 0;
-		auto rightOffset = (len + i) % len;
-		rightOffset += rightOffset < 0 ? len : 0;
+		auto leftOffset = (i - tapsOffset) % lenghtJ;
+		leftOffset += leftOffset < 0 ? lenghtJ : 0;
+		auto rightOffset = (lenghtJ + i) % lenghtJ;
+		rightOffset += rightOffset < 0 ? lenghtJ : 0;
 		for (int component = 0; component < 3; component++) {
 			inTopLine[component][i - tapsOffset] = inTopLine[component][leftOffset];
-			inTopLine[component][i + len] = inTopLine[component][rightOffset];
+			inTopLine[component][i + lenghtJ] = inTopLine[component][rightOffset];
 			inBotLine[component][i - tapsOffset] = inBotLine[component][leftOffset];
-			inBotLine[component][i + len] = inBotLine[component][rightOffset];
+			inBotLine[component][i + lenghtJ] = inBotLine[component][rightOffset];
 		}
 	}
 }
@@ -246,14 +249,14 @@ void frameData::lineData::gatherLinesCompression(const T* in) {
 void frameData::lineData::interpLinesCompression(void) {
 
 	if (parent.customInterp.func != nullptr) {
-		for (int i = 0; i < len; i++) {
+		for (int i = 0; i < lenghtJ; i++) {
 			for (int component = 0; component < 3; component++) {
-				parent.customInterp.func(len, width, i, inTopLine[component], outTopLine[component]);
-				parent.customInterp.func(len, width, i, inBotLine[component], outBotLine[component]);
+				parent.customInterp.func(lenghtJ, width, i, inTopLine[component], outTopLine[component]);
+				parent.customInterp.func(lenghtJ, width, i, inBotLine[component], outBotLine[component]);
 			}
 		}
 	} else {
-		for (int i = 0; i < len; i++) {
+		for (int i = 0; i < lenghtJ; i++) {
 
 			float sumTop[3] = { 0.5f, 0.5f, 0.5f },
 				sumBot[3] = { 0.5f, 0.5f, 0.5f };
@@ -261,9 +264,9 @@ void frameData::lineData::interpLinesCompression(void) {
 			for (int j = 0; j < taps; j++) {
 				float coeff = coeffs[j][i];
 				int x_access = i + j - tapsOffset;
-				x_access += (x_access < 0) * len;
-				x_access -= (x_access >= len) * len;
-				if ((x_access < 0) || (x_access >= len)) x_access = x_access % len;
+				x_access += (x_access < 0) * lenghtJ;
+				x_access -= (x_access >= lenghtJ) * lenghtJ;
+				if ((x_access < 0) || (x_access >= lenghtJ)) x_access = x_access % lenghtJ;
 				for (int component = 0; component < 3; component++) {
 					sumTop[component] += inTopLine[component][x_access] * coeff;
 					sumBot[component] += inBotLine[component][x_access] * coeff;
@@ -280,7 +283,7 @@ void frameData::lineData::interpLinesCompression(void) {
 
 template<typename T>
 void frameData::lineData::storeLinesCompression(T* out) {
-	for (int i = 0; i < len; ++i) {
+	for (int i = 0; i < lenghtJ; ++i) {
 		int x_access = xIndexes[i];
 		int y_access = yIndexes[i];
 		for (int component = 0; component < 3; component++) {
@@ -291,52 +294,31 @@ void frameData::lineData::storeLinesCompression(T* out) {
 	}
 }
 
-void frameData::lineData::constructGatherLUT(void) {
+void frameData::lineData::constructLUT(void) {
 
-	const int Lj = len / 2;
-	const int halfheight = height / 2;
-	const int x_inner_offset = halfheight - 2 * y - 1;
-	const int x_left_offset = halfheight - y - 1;
-	const int x_right_offset = halfheight + y;
+	const int halfLenghtJ = lenghtJ / 2;
+	const int halfHeight = height / 2;
+	const int x_inner_offset = halfHeight - 2 * y - 1;
+	const int x_left_offset = halfHeight - y - 1;
+	const int x_right_offset = halfHeight + y;
 
-	for (int x = 0; x < len; x++) {
-		int temp = abs(Lj - 0.5 - x);
+	for (int x = 0; x < lenghtJ; x++) {
+		int temp = abs(halfLenghtJ - 0.5 - x);
 		if (y > temp) {
 			yIndexes[x] = y;
 			xIndexes[x] = x + x_inner_offset;
 		} else {
-			yIndexes[x] = Lj - temp - 1;
-			xIndexes[x] = (x < Lj) ? x_left_offset : x_right_offset;
-		}
-	}
-
-	const double Dj = Lj / (double)height;
-	for (int x = 0; x < width / 2; x++)
-		lineIndexes[x] = std::floor(Dj * x);
-}
-
-void frameData::lineData::constructScatterLUT(void) {
-
-	const int Lj = len / 2;
-	const int halfheight = height / 2;
-	const int x_inner_offset = halfheight - 2 * y - 1;
-	const int x_left_offset = halfheight - y - 1;
-	const int x_right_offset = halfheight + y;
-
-	for (int x = 0; x < len; x++) {
-		int temp = abs(Lj - 0.5 - x);
-		if (y > temp) {
-			yIndexes[x] = y;
-			xIndexes[x] = x + x_inner_offset;
-		} else {
-			yIndexes[x] = Lj - temp - 1;
-			xIndexes[x] = (x < Lj) ? x_left_offset : x_right_offset;
+			yIndexes[x] = halfLenghtJ - temp - 1;
+			xIndexes[x] = (x < halfLenghtJ) ? x_left_offset : x_right_offset;
 		}
 	}
 
 	if (!op) {
-		const double Dj = Lj / (double)height;
+		const double distanceJ = lenghtJ / (double)width;
 		for (int x = 0; x < width / 2; x++)
-			lineIndexes[x] = std::floor(Dj * x);
+			lineIndexes[x] = std::floor(distanceJ * x);
 	}
+
+	op ? buildCompressLineCoeffs() : buildDecompressLineCoeffs();
+
 }

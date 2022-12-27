@@ -65,18 +65,7 @@ void frameData::expandUV(T* data, int width, int height) {
 template void frameData::expandUV(uint8_t* data, int width, int height);
 template void frameData::expandUV(uint16_t* data, int width, int height);
 
-
-void frameData::buildFrameCoeffs(void) {
-	for (auto& line : lines)
-		op ? line.buildCompressLineCoeffs() : line.buildDecompressLineCoeffs();
-}
-
 void frameData::kernel(const int id) {
 	for (int i = id; i < height / 2; i += this->numThreads) // topo e fundo por iteração
 		op ? lines[i].compressLine(this->input, this->output) : lines[i].decompressLine(this->input, this->output);
 };
-
-std::vector<float> frameData::coeffsFunc(double x) {
-	(void)x;
-	return std::vector<float>(taps, 0.0f);
-}

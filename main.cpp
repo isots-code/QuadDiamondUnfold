@@ -18,8 +18,8 @@ int main(int argc, char** argv) {
 		bool op = decoder.getOp();
 
 		int interpChoice = -1;
-		if (argv[3])
-			interpChoice = std::atoi(argv[3]);
+		if (argv[2])
+			interpChoice = std::atoi(argv[2]);
 
 		int dim = decoder.getDim();
 
@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
 
 		decoder.connectFrameData(*dataLookup);
 		decoder.startDecode();
-		decoder.startFFPlay(1);
+		decoder.startFFPlay(op);
 
 		delete dataLookup;
 

@@ -3,8 +3,8 @@
 #include "vectormath_hyp.h"
 #include "vectormath_trig.h"
 
-void centripetalCatMullRomInterpolation_AVX2(const int width, const int len, const int i, const float* __restrict in, int* __restrict out) {
-	const Vec8f Dj(len / (double)width);
+void centripetalCatMullRomInterpolation_AVX2(const int width, const int lenghtJ, const int i, const float* __restrict in, int* __restrict out) {
+	const Vec8f Dj(lenghtJ / (double)width);
 	Vec8f x = Dj * (i + Vec8f(0, 1, 2, 3, 4, 5, 6, 7));
 	Vec8f x_floor = floor(x);
 	x -= x_floor;

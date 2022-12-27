@@ -137,8 +137,8 @@ std::vector<float> lanczosN(double x, int taps) {
 	return ret;
 }
 
-void centripetalCatMullRomInterpolation(const int width, const int len, const int i, const float* __restrict in, int* __restrict out) {
-	const float Dj = len / (double)width;
+void centripetalCatMullRomInterpolation(const int width, const int lenghtJ, const int i, const float* __restrict in, int* __restrict out) {
+	const float Dj = lenghtJ / (double)width;
 	float x = Dj * i;
 	float x_floor = std::floor(x);
 	x -= x_floor;

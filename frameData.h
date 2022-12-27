@@ -39,7 +39,7 @@ public:
 
 	frameData() = delete;
 
-	virtual ~frameData();
+	~frameData();
 
 	template<typename T>
 	static void expandUV(T* data, int width, int height);
@@ -47,11 +47,7 @@ public:
 	template<typename T>
 	static void expandUV_AVX2(T* data, int width, int height);
 
-	void buildFrameCoeffs(void);
-
-	virtual void kernel(const int id);
-
-	virtual std::vector<float> coeffsFunc(double x);
+	void kernel(const int id);
 
 	const bitPerSubPixel_t bitPerSubPixel;
 
@@ -61,11 +57,11 @@ public:
 
 		lineData() = delete;
 
-		virtual ~lineData();
+		~lineData();
 
-		virtual void decompressLine(const void* in, void* out);
+		void decompressLine(const void* in, void* out);
 
-		virtual void compressLine(const void* in, void* out);
+		void compressLine(const void* in, void* out);
 
 		void buildDecompressLineCoeffs(void);
 
@@ -75,7 +71,7 @@ public:
 		template<typename T>
 		void gatherLinesDecompression(const T* in);
 
-		virtual void interpLinesDecompression(void);
+		void interpLinesDecompression(void);
 
 		template<typename T>
 		void storeLinesDecompression(T* out);
@@ -83,7 +79,7 @@ public:
 		template<typename T>
 		void gatherLinesDecompression_AVX2(const T* in);
 
-		virtual void interpLinesDecompression_AVX2(void);
+		void interpLinesDecompression_AVX2(void);
 
 		template<typename T>
 		void storeLinesDecompression_AVX2(T* out);
@@ -91,7 +87,7 @@ public:
 		template<typename T>
 		void gatherLinesCompression(const T* in);
 
-		virtual void interpLinesCompression(void);
+		void interpLinesCompression(void);
 
 		template<typename T>
 		void storeLinesCompression(T* out);
@@ -99,18 +95,16 @@ public:
 		template<typename T>
 		void gatherLinesCompression_AVX2(const T* in);
 
-		virtual void interpLinesCompression_AVX2(void);
+		void interpLinesCompression_AVX2(void);
 
 		template<typename T>
 		void storeLinesCompression_AVX2(T* out);
 
-		virtual void constructGatherLUT(void);
-
-		virtual void constructScatterLUT(void);
+		void constructLUT(void);
 
 	public:
 		const bool op;
-		const int len;
+		const int lenghtJ;
 		const int width;
 		const int height;
 
