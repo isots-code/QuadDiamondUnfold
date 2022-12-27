@@ -2,7 +2,8 @@
 
 #include <iostream>
 
-#include "interpLUTs.h"
+#include "frameData.h"
+#include "interpolators.h"
 #include "AlignedVector.h"
 #include "ffmpegDecode.h"
 
@@ -16,9 +17,9 @@ int main(int argc, char** argv) {
 		
 		bool op = decoder.getOp();
 
-		int interp = -1;
+		int interpChoice = -1;
 		if (argv[3])
-			interp = std::atoi(argv[3]);
+			interpChoice = std::atoi(argv[3]);
 
 		int dim = decoder.getDim();
 
@@ -29,33 +30,14 @@ int main(int argc, char** argv) {
 		std::fill(out1.begin(), out1.end(), 0);
 
 		frameData* dataLookup;
-		switch (interp) {
-			case 1:
-				dataLookup = new nearest(op, dim, frameData::BITS_8);
-				break;
-			case 2:
-				dataLookup = new linear(op, dim, frameData::BITS_8);
-				break;
-			case 3:
-				dataLookup = new cubic(op, dim, frameData::BITS_8);
-				break;
-			case 4:
-				dataLookup = new lanczos2(op, dim, frameData::BITS_8);
-				break;
-			case 5:
-				dataLookup = new lanczos3(op, dim, frameData::BITS_8);
-				break;
-			case 6:
-			case -1:
-				dataLookup = new lanczos4(op, dim, frameData::BITS_8);
-				break;
-			case 7:
-				dataLookup = new lanczosN(op, dim, std::atoi(argv[3]), frameData::BITS_8);
-				break;
-			case 8:
-				dataLookup = new frameData(op, dim, 4, frameData::BITS_8, &centripetalCatMullRomInterpolation);
-				break;
-		}
+		if (interpChoice == -1)
+			dataLookup = new frameData(op, dim, frameData::BITS_8);
+		else if (interpChoice <= interpolator::LANCZOSN)
+			dataLookup = new frameData(op, dim, frameData::BITS_8, interpolators[interpChoice]);
+		else if (interpChoice <= customInterpolator::CENTRIPETAL_CATMULL_ROM_AVX2)
+			dataLookup = new frameData(op, dim, frameData::BITS_8, customInterpolators[interpChoice]);
+		else 
+			throw std::runtime_error("Unsupported interpolator");
 		dataLookup->setOBuffers(out0.data(), out1.data());
 
 		decoder.connectFrameData(*dataLookup);

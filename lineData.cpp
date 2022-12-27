@@ -6,7 +6,7 @@
 
 frameData::lineData::lineData(frameData& parent, int y)
 	: op(parent.op), len(y * 4 + 2), width(parent.width), height(parent.height), 
-	y(y), taps(parent.taps), linePad(instrset_detect() >= 8 ? 8 : 0), paddedLen((len / linePad)* linePad + linePad),
+	y(y), taps(parent.taps), linePad(instrset_detect() >= 8 ? 8 : 1), paddedLen((len / linePad)* linePad + linePad),
 	tapsOffset(-(taps / 2 - taps + 1)), outTopOffset(y * width), outBotOffset((height - 1 - y)* width), parent(parent) {
 	xIndexes.resize(paddedLen);
 	yIndexes.resize(paddedLen);
@@ -167,11 +167,11 @@ void frameData::lineData::interpLinesDecompression(void) {
 
 	const int Lj = len / 2;
 
-	if (parent.interp != nullptr) {
+	if (parent.customInterp.func != nullptr) {
 		for (int i = 0; i < width; i++) {
 			for (int component = 0; component < 3; component++) {
-				parent.interp(*this, i, inTopLine[component], outTopLine[component]);
-				parent.interp(*this, i, inBotLine[component], outBotLine[component]);
+				parent.customInterp.func(len, width, i, inTopLine[component], outTopLine[component]);
+				parent.customInterp.func(len, width, i, inBotLine[component], outBotLine[component]);
 			}
 		}
 	} else {
@@ -245,11 +245,11 @@ void frameData::lineData::gatherLinesCompression(const T* in) {
 
 void frameData::lineData::interpLinesCompression(void) {
 
-	if (parent.interp != nullptr) {
+	if (parent.customInterp.func != nullptr) {
 		for (int i = 0; i < len; i++) {
 			for (int component = 0; component < 3; component++) {
-				parent.interp(*this, i, inTopLine[component], outTopLine[component]);
-				parent.interp(*this, i, inBotLine[component], outBotLine[component]);
+				parent.customInterp.func(len, width, i, inTopLine[component], outTopLine[component]);
+				parent.customInterp.func(len, width, i, inBotLine[component], outBotLine[component]);
 			}
 		}
 	} else {
@@ -283,7 +283,6 @@ void frameData::lineData::storeLinesCompression(T* out) {
 	for (int i = 0; i < len; ++i) {
 		int x_access = xIndexes[i];
 		int y_access = yIndexes[i];
-		int component = 2;
 		for (int component = 0; component < 3; component++) {
 			T* compOutPtr = out + ((width / 2) * height * component);
 			compOutPtr[x_access + y_access * width / 2] = std::max(std::min(outTopLine[component][i], (1 << parent.bitPerSubPixel) - 1), 0);

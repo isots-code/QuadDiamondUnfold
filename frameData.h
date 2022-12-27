@@ -3,6 +3,8 @@
 #include <vector>
 #include <array>
 
+#include "interpolators.h"
+
 #include "ThreadExecutor.h"
 
 struct frameData : public ThreadedExecutor {
@@ -22,12 +24,18 @@ struct frameData : public ThreadedExecutor {
 	struct lineData;
 
 public:
-	typedef void (*interpFunc_t)(frameData::lineData& self, const int x, const float* __restrict in, int* __restrict out);
 	
-	frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, interpFunc_t interp, int numThread);
-	frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, interpFunc_t interp);
-	frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, int numThreads);
-	frameData(bool op, int dim, int taps, bitPerSubPixel_t bits);
+	frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, customInterp_t interp, int numThread);
+	frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, customInterp_t interp);
+	frameData(bool op, int dim, bitPerSubPixel_t bits, customInterp_t interp, int numThread);
+	frameData(bool op, int dim, bitPerSubPixel_t bits, customInterp_t interp);
+	
+	frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, interp_t interp, int numThread);
+	frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, interp_t interp);
+	frameData(bool op, int dim, bitPerSubPixel_t bits, interp_t interp, int numThread);
+	frameData(bool op, int dim, bitPerSubPixel_t bits, interp_t interp);
+	frameData(bool op, int dim, bitPerSubPixel_t bits, int numThreads);
+	frameData(bool op, int dim, bitPerSubPixel_t bits);
 
 	frameData() = delete;
 
@@ -130,6 +138,7 @@ public:
 	const int taps;
 	const int width;
 	const int height;
-	const interpFunc_t interp;
+	const interp_t interp;
+	const customInterp_t customInterp;
 	std::vector<lineData> lines;
 };

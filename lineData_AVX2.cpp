@@ -1,3 +1,7 @@
+#define __AVX512F__
+#include <immintrin.h>
+#undef __AVX512F__
+
 #include <cmath>
 
 #include "instrset.h"
@@ -61,11 +65,11 @@ void frameData::lineData::interpLinesDecompression_AVX2(void) {
 
 	const int Lj = len / 2;
 
-	if (parent.interp != nullptr) {
+	if (parent.customInterp.func != nullptr) {
 		for (int i = 0; i < width; i += Vec8f::size()) {
 			for (int component = 0; component < 3; component++) {
-				parent.interp(*this, i, inTopLine[component], outTopLine[component]);
-				parent.interp(*this, i, inBotLine[component], outBotLine[component]);
+				parent.customInterp.func(len, width, i, inTopLine[component], outTopLine[component]);
+				parent.customInterp.func(len, width, i, inBotLine[component], outBotLine[component]);
 			}
 		}
 	} else {
@@ -137,11 +141,11 @@ void frameData::lineData::gatherLinesCompression_AVX2(const T* in) {
 
 void frameData::lineData::interpLinesCompression_AVX2(void) {
 
-	if (parent.interp != nullptr) {
+	if (parent.customInterp.func != nullptr) {
 		for (int i = 0; i < len; i += Vec8f::size()) {
 			for (int component = 0; component < 3; component++) {
-				parent.interp(*this, i, inTopLine[component], outTopLine[component]);
-				parent.interp(*this, i, inBotLine[component], outBotLine[component]);
+				parent.customInterp.func(len, width, i, inTopLine[component], outTopLine[component]);
+				parent.customInterp.func(len, width, i, inBotLine[component], outBotLine[component]);
 			}
 		}
 	} else {
@@ -175,7 +179,6 @@ void frameData::lineData::storeLinesCompression_AVX2(T* out) {
 	for (int i = 0; i < len; ++i) {
 		int x_access = xIndexes[i];
 		int y_access = yIndexes[i];
-		int component = 2;
 		for (int component = 0; component < 3; component++) {
 			T* compOutPtr = out + ((width / 2) * height * component);
 			compOutPtr[x_access + y_access * width / 2] = std::max(std::min(outTopLine[component][i], (1 << parent.bitPerSubPixel) - 1), 0);
