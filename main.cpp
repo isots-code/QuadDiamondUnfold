@@ -26,15 +26,12 @@ int main(int argc, char** argv) {
 		AlignedVector<uint8_t> out0(dim * dim * 2 * 3);
 		AlignedVector<uint8_t> out1(dim * dim * 2 * 3);
 
-		std::fill(out0.begin(), out0.end(), 0);
-		std::fill(out1.begin(), out1.end(), 0);
-
 		frameData* dataLookup;
 		if (interpChoice == -1)
 			dataLookup = new frameData(op, dim, frameData::BITS_8);
-		else if (interpChoice <= interpolator::LANCZOSN)
+		else if (interpChoice >= interpolator::NEAREST && interpChoice <= interpolator::LANCZOSN)
 			dataLookup = new frameData(op, dim, frameData::BITS_8, interpolators[interpChoice]);
-		else if (interpChoice <= customInterpolator::CENTRIPETAL_CATMULL_ROM_AVX2)
+		else if (interpChoice >= customInterpolator::CENTRIPETAL_CATMULL_ROM && interpChoice <= customInterpolator::CENTRIPETAL_CATMULL_ROM_AVX2)
 			dataLookup = new frameData(op, dim, frameData::BITS_8, customInterpolators[interpChoice]);
 		else 
 			throw std::runtime_error("Unsupported interpolator");
