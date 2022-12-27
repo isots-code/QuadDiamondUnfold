@@ -1,12 +1,14 @@
 #include "frameData.h"
 
-frameData::frameData(int dim, int taps, bitPerSubPixel_t bits, int numThreads) : ThreadedExecutor(dim, numThreads), bitPerSubPixel(bits), dim(dim), taps(taps) {
+frameData::frameData(int dim, int taps, bitPerSubPixel_t bits, interpFunc_t interp, int numThreads) : ThreadedExecutor(dim, numThreads), bitPerSubPixel(bits), dim(dim), taps(taps), interp(interp) {
 	lines.reserve(dim / 2);
 	for (int i = 0; i < dim / 2; i++)
 		lines.emplace_back(*this, i, dim);
 }
 
-frameData::frameData(int dim, int taps, bitPerSubPixel_t bits) : frameData(dim, taps, bits, std::thread::hardware_concurrency()) {}
+frameData::frameData(int dim, int taps, bitPerSubPixel_t bits, interpFunc_t interp) : frameData(dim, taps, bits, interp, std::thread::hardware_concurrency()) {}
+frameData::frameData(int dim, int taps, bitPerSubPixel_t bits, int numThreads) : frameData(dim, taps, bits, nullptr, numThreads) {}
+frameData::frameData(int dim, int taps, bitPerSubPixel_t bits) : frameData(dim, taps, bits, nullptr, std::thread::hardware_concurrency()) {}
 
 frameData::~frameData() {
 	this->stop();
@@ -143,3 +145,8 @@ void frameData::kernel(const int id) {
 	for (int i = id; i < dim / 2; i += this->numThreads) // topo e fundo por iteração
 		lines[i].processLine(this->input, this->output);
 };
+
+std::vector<float> frameData::coeffsFunc(double x) {
+	(void)x;
+	return std::vector<float>(taps, 0.0f);
+}

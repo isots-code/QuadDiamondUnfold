@@ -32,21 +32,29 @@ struct frameData : public ThreadedExecutor {
 		BITS_16
 	};
 
-	frameData(int dim, int taps, bitPerSubPixel_t bits, int numThread);
+protected:
+	struct lineData;
+
+public:
+	typedef void (*interpFunc_t)(frameData::lineData& self, const int x, const float* __restrict in, int* __restrict out);
+	
+	frameData(int dim, int taps, bitPerSubPixel_t bits, interpFunc_t interp, int numThread);
+	frameData(int dim, int taps, bitPerSubPixel_t bits, interpFunc_t interp);
+	frameData(int dim, int taps, bitPerSubPixel_t bits, int numThreads);
 	frameData(int dim, int taps, bitPerSubPixel_t bits);
 
 	frameData() = delete;
 
 	virtual ~frameData();
 
-	virtual std::vector<float> coeffsFunc(double x) = 0;
-
-	virtual void kernel(const int id);
+	template<typename T>
+	static void expandUV(T* data, int dim);
 
 	void buildFrameCoeffs(void);
 
-	template<typename T>
-	static void expandUV(T* data, int dim);
+	virtual void kernel(const int id);
+
+	virtual std::vector<float> coeffsFunc(double x);
 
 	const bitPerSubPixel_t bitPerSubPixel;
 
@@ -108,5 +116,6 @@ protected:
 
 	const int dim;
 	const int taps;
+	const interpFunc_t interp;
 	std::vector<lineData> lines;
 };

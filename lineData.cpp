@@ -104,30 +104,38 @@ void frameData::lineData::interpLines(void) {
 
 	const int Lj = len / 2;
 
-	for (int i = 0; i < height; i += Vec8f::size()) {
-
-		Vec8f sumTR[3] = { Vec8f(0.5f), Vec8f(0.5f) , Vec8f(0.5f) },
-			sumTL[3] = { Vec8f(0.5f), Vec8f(0.5f) , Vec8f(0.5f) },
-			sumBR[3] = { Vec8f(0.5f), Vec8f(0.5f) , Vec8f(0.5f) },
-			sumBL[3] = { Vec8f(0.5f), Vec8f(0.5f) , Vec8f(0.5f) };
-		Vec8i indexes = extend(Vec8us().load(&(lineIndexes[i])));
-		Vec8i baseIndex(lineIndexes[i]);
-
-		for (int j = 0; j < taps; j++) {
-			Vec8f coeff = Vec8f().load(&coeffs[j][i]);
+	if (parent.interp != nullptr) {
+		for (int i = 0; i < len; i += Vec8f::size()) {
 			for (int component = 0; component < 3; component++) {
-				sumTL[component] += lookup8(indexes - baseIndex, Vec8f().load(inTopLine[component] + lineIndexes[i] + j - tapsOffset)) * coeff;
-				sumTR[component] += lookup8(indexes - baseIndex, Vec8f().load(inTopLine[component] + lineIndexes[i] + j - tapsOffset + Lj)) * coeff;
-				sumBL[component] += lookup8(indexes - baseIndex, Vec8f().load(inBotLine[component] + lineIndexes[i] + j - tapsOffset)) * coeff;
-				sumBR[component] += lookup8(indexes - baseIndex, Vec8f().load(inBotLine[component] + lineIndexes[i] + j - tapsOffset + Lj)) * coeff;
+				parent.interp(*this, i, inTopLine[component], outTopLine[component]);
+				parent.interp(*this, i, inBotLine[component], outBotLine[component]);
 			}
 		}
+	} else {
+		for (int i = 0; i < len; i += Vec8f::size()) {
+			Vec8f sumTR[3] = { Vec8f(0.5f), Vec8f(0.5f) , Vec8f(0.5f) },
+				sumTL[3] = { Vec8f(0.5f), Vec8f(0.5f) , Vec8f(0.5f) },
+				sumBR[3] = { Vec8f(0.5f), Vec8f(0.5f) , Vec8f(0.5f) },
+				sumBL[3] = { Vec8f(0.5f), Vec8f(0.5f) , Vec8f(0.5f) };
+			Vec8i indexes = extend(Vec8us().load(&(lineIndexes[i])));
+			Vec8i baseIndex(lineIndexes[i]);
 
-		for (int component = 0; component < 3; component++) {
-			truncatei(sumTL[component]).store(&(outTopLine[component][i]));
-			truncatei(sumTR[component]).store(&(outTopLine[component][i + height]));
-			truncatei(sumBL[component]).store(&(outBotLine[component][i]));
-			truncatei(sumBR[component]).store(&(outBotLine[component][i + height]));
+			for (int j = 0; j < taps; j++) {
+				Vec8f coeff = Vec8f().load(&coeffs[j][i]);
+				for (int component = 0; component < 3; component++) {
+					sumTL[component] += lookup8(indexes - baseIndex, Vec8f().load(inTopLine[component] + lineIndexes[i] + j - tapsOffset)) * coeff;
+					sumTR[component] += lookup8(indexes - baseIndex, Vec8f().load(inTopLine[component] + lineIndexes[i] + j - tapsOffset + Lj)) * coeff;
+					sumBL[component] += lookup8(indexes - baseIndex, Vec8f().load(inBotLine[component] + lineIndexes[i] + j - tapsOffset)) * coeff;
+					sumBR[component] += lookup8(indexes - baseIndex, Vec8f().load(inBotLine[component] + lineIndexes[i] + j - tapsOffset + Lj)) * coeff;
+				}
+			}
+
+			for (int component = 0; component < 3; component++) {
+				truncatei(sumTL[component]).store(&(outTopLine[component][i]));
+				truncatei(sumTR[component]).store(&(outTopLine[component][i + height]));
+				truncatei(sumBL[component]).store(&(outBotLine[component][i]));
+				truncatei(sumBR[component]).store(&(outBotLine[component][i + height]));
+			}
 		}
 	}
 }
@@ -176,28 +184,38 @@ void frameData::lineData::interpLines(void) {
 
 	const int Lj = len / 2;
 
-	for (int i = 0; i < height; i++) {
-
-		float sumTR[3] = { 0.5f, 0.5f , 0.5f },
-			sumTL[3] = { 0.5f, 0.5f , 0.5f },
-			sumBR[3] = { 0.5f, 0.5f , 0.5f },
-			sumBL[3] = { 0.5f, 0.5f , 0.5f };
-
-		for (int j = 0; j < taps; j++) {
-			float coeff = coeffs[j][i];
+	if (parent.interp != nullptr) {
+		for (int i = 0; i < len; i++) {
 			for (int component = 0; component < 3; component++) {
-				sumTL[component] += inTopLine[component][lineIndexes[i] + j - tapsOffset] * coeff;
-				sumTR[component] += inTopLine[component][lineIndexes[i] + j - tapsOffset + Lj] * coeff;
-				sumBL[component] += inBotLine[component][lineIndexes[i] + j - tapsOffset] * coeff;
-				sumBR[component] += inBotLine[component][lineIndexes[i] + j - tapsOffset + Lj] * coeff;
+				parent.interp(*this, i, inTopLine[component], outTopLine[component]);
+				parent.interp(*this, i, inBotLine[component], outBotLine[component]);
 			}
 		}
+	} else {
 
-		for (int component = 0; component < 3; component++) {
-			outTopLine[component][i] = sumTL[component];
-			outTopLine[component][i + height] = sumTR[component];
-			outBotLine[component][i] = sumBL[component];
-			outBotLine[component][i + height] = sumBR[component];
+		for (int i = 0; i < height; i++) {
+
+			float sumTR[3] = { 0.5f, 0.5f , 0.5f },
+				sumTL[3] = { 0.5f, 0.5f , 0.5f },
+				sumBR[3] = { 0.5f, 0.5f , 0.5f },
+				sumBL[3] = { 0.5f, 0.5f , 0.5f };
+
+			for (int j = 0; j < taps; j++) {
+				float coeff = coeffs[j][i];
+				for (int component = 0; component < 3; component++) {
+					sumTL[component] += inTopLine[component][lineIndexes[i] + j - tapsOffset] * coeff;
+					sumTR[component] += inTopLine[component][lineIndexes[i] + j - tapsOffset + Lj] * coeff;
+					sumBL[component] += inBotLine[component][lineIndexes[i] + j - tapsOffset] * coeff;
+					sumBR[component] += inBotLine[component][lineIndexes[i] + j - tapsOffset + Lj] * coeff;
+				}
+			}
+
+			for (int component = 0; component < 3; component++) {
+				outTopLine[component][i] = sumTL[component];
+				outTopLine[component][i + height] = sumTR[component];
+				outBotLine[component][i] = sumBL[component];
+				outBotLine[component][i + height] = sumBR[component];
+			}
 		}
 	}
 }

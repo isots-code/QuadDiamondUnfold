@@ -43,9 +43,9 @@ int main(int argc, char** argv) {
 				case 7:
 					dataLookup = new lanczosN(dim, std::atoi(argv[3]), frameData::BITS_8);
 					break;
-				case 8:
-					dataLookup = new frameDataCustom(dim, 4, frameData::BITS_8, &centripetalCatMullRomInterpolation);
-					break;
+				//case 8:
+					dataLookup = new frameData(dim, 4, frameData::BITS_8, &centripetalCatMullRomInterpolation);
+				//	break;
 			}
 		}
 		dataLookup->setOBuffers(out0.data(), out1.data());

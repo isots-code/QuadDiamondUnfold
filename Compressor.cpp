@@ -91,7 +91,13 @@ void Compressor::lineDataCompressor::gatherLines(const T* in) {
 void Compressor::lineDataCompressor::interpLines(void) {
 
 	if (parent.interp != nullptr) {
-		for (int i = 0; i < len; i++) {
+
+#if INSTRSET >= 8 // AVX2
+		int increment = Vec8f::size();
+#else
+		int increment = 1;
+#endif
+		for (int i = 0; i < len; i += increment) {
 			for (int component = 0; component < 3; component++) {
 				parent.interp(*this, i, inTopLine[component], outTopLine[component]);
 				parent.interp(*this, i, inBotLine[component], outBotLine[component]);
