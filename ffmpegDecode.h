@@ -26,7 +26,7 @@ struct ffmpegDecode {
 
 	void decodeLoop(void);
 
-	void startFFPlay(void);
+	void startFFPlay(bool op);
 
 	bool running;
 	AlignedVector<uint8_t> buffers[2];

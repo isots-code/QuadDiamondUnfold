@@ -158,7 +158,7 @@ void ffmpegDecode::decodeLoop(void) {
 	//frameDataLookUp->writeInput();
 }
 
-void ffmpegDecode::startFFPlay(void) {
+void ffmpegDecode::startFFPlay(bool op) {
 	std::thread([&](int dim) {
 		// Create pipes
 		HANDLE hReadPipe, hWritePipe;
@@ -166,7 +166,7 @@ void ffmpegDecode::startFFPlay(void) {
 			.lpSecurityDescriptor = nullptr,
 			.bInheritHandle = TRUE
 		};
-		if (!CreatePipe(&hReadPipe, &hWritePipe, &sa, dim * dim * 3 * 2)) {
+		if (!CreatePipe(&hReadPipe, &hWritePipe, &sa, (dim * dim * 3) * (op ? 1 : 2))) {
 			std::cout << "Failed to create pipes\n";
 			return 1;
 		}
@@ -183,7 +183,11 @@ void ffmpegDecode::startFFPlay(void) {
 		PROCESS_INFORMATION pi = {};
 
 		// Set up the command line for ffplay
-		auto cmd = std::string("ffplay -autoexit -x 1440 -y 720 -f rawvideo -pixel_format yuv444p -video_size " + std::to_string(dim * 2) + "x" + std::to_string(dim) + " -i pipe:0");
+		std::string cmd;
+		if (op) 
+			cmd = std::string("ffplay -autoexit -x 720 -y 720 -f rawvideo -pixel_format yuv444p -video_size " + std::to_string(dim) + "x" + std::to_string(dim) + " -i pipe:0");
+		 else
+			cmd = std::string("ffplay -autoexit -x 1440 -y 720 -f rawvideo -pixel_format yuv444p -video_size " + std::to_string(dim * 2) + "x" + std::to_string(dim) + " -i pipe:0");
 
 		// Create the ffplay process
 		if (!CreateProcessA(nullptr, (LPSTR)cmd.c_str(), nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi)) {
@@ -194,7 +198,7 @@ void ffmpegDecode::startFFPlay(void) {
 		unsigned long bytesWritten;
 		while (running) {
 			auto buffer = frameDataLookUp->readOutput();
-			if (!WriteFile(hWritePipe, buffer, dim * dim * 3 * 2, &bytesWritten, nullptr)) {
+			if (!WriteFile(hWritePipe, buffer, (dim * dim * 3) * (op ? 1 : 2), &bytesWritten, nullptr)) {
 				std::cout << "Failed to write to pipe\n";
 				return -1;
 			}

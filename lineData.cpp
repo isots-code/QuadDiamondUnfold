@@ -23,7 +23,7 @@ frameData::lineData::lineData(frameData& parent, int y)
 	tapsOffset(-(taps / 2 - taps + 1)), outTopOffset(y* width), outBotOffset((height - 1 - y)* width), parent(parent) {
 	xIndexes.resize(paddedLen);
 	yIndexes.resize(paddedLen);
-	lineIndexes.resize(op ? width / 2 : 0);
+	lineIndexes.resize(op ? 0 : width / 2);
 	coeffs.resize(taps);
 	for (auto& subCoeffs : coeffs)
 		subCoeffs.resize(op ? len : width / 2);
@@ -291,15 +291,16 @@ template<typename T>
 void frameData::lineData::gatherLinesCompression(const T* in) {
 	for (int i = 0; i < len; i++) {
 
-		int x_access = i * (len / width);
+		int x_access = i * (width / (float)len);
 
 		for (int component = 0; component < 3; component++) {
-			auto compInPtr = in + (height * height * component);
-			inTopLine[component][i] = compInPtr[x_access + y * height];
-			inBotLine[component][i] = compInPtr[x_access + (height - 1 - y) * height];
+			auto compInPtr = in + (width * height * component);
+			inTopLine[component][i] = compInPtr[x_access + y * width];
+			inBotLine[component][i] = compInPtr[x_access + (height - 1 - y) * width];
 		}
 
 	}
+
 	//margins
 	for (int i = 0; i < taps / 2; i++) {
 		auto leftOffset = (i - tapsOffset) % len;
@@ -338,7 +339,7 @@ void frameData::lineData::interpLinesCompression(void) {
 
 			for (int j = 0; j < taps; j++) {
 				float coeff = coeffs[j][i];
-				int x_access = j - tapsOffset;
+				int x_access = i + j - tapsOffset;
 				x_access += (x_access < 0) * len;
 				x_access -= (x_access >= len) * len;
 				if ((x_access < 0) || (x_access >= len)) x_access = x_access % len;
@@ -361,10 +362,11 @@ void frameData::lineData::storeLinesCompression(T* out) {
 	for (int i = 0; i < len; ++i) {
 		int x_access = xIndexes[i];
 		int y_access = yIndexes[i];
+		int component = 2;
 		for (int component = 0; component < 3; component++) {
-			T* compOutPtr = out + (width * height * component);
-			compOutPtr[i + x_access + y_access * height] = std::max(std::min(outTopLine[component][i], (1 << parent.bitPerSubPixel) - 1), 0);
-			compOutPtr[i + x_access + (height - 1 - y_access) * height] = std::max(std::min(outBotLine[component][i], (1 << parent.bitPerSubPixel) - 1), 0);
+			T* compOutPtr = out + ((width / 2) * height * component);
+			compOutPtr[x_access + y_access * width / 2] = std::max(std::min(outTopLine[component][i], (1 << parent.bitPerSubPixel) - 1), 0);
+			compOutPtr[x_access + (height - 1 - y_access) * width / 2] = std::max(std::min(outBotLine[component][i], (1 << parent.bitPerSubPixel) - 1), 0);
 		}
 	}
 }
@@ -412,9 +414,11 @@ void frameData::lineData::constructScatterLUT(void) {
 		}
 	}
 
-	const double Dj = Lj / (double)height;
-	for (int x = 0; x < width / 2; x++)
-		lineIndexes[x] = std::floor(Dj * x);
+	if (!op) {
+		const double Dj = Lj / (double)height;
+		for (int x = 0; x < width / 2; x++)
+			lineIndexes[x] = std::floor(Dj * x);
+	}
 }
 
 #if INSTRSET >= 8 // AVX2
