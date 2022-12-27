@@ -21,10 +21,6 @@ struct frameData : public ThreadedExecutor {
 		BITS_16
 	};
 
-	struct lineData;
-
-public:
-	
 	frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, customInterp_t interp, int numThread);
 	frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, customInterp_t interp);
 	frameData(bool op, int dim, bitPerSubPixel_t bits, customInterp_t interp, int numThread);
@@ -39,7 +35,7 @@ public:
 
 	frameData() = delete;
 
-	~frameData();
+	virtual ~frameData();
 
 	template<typename T>
 	static void expandUV(T* data, int width, int height);

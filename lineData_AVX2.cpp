@@ -40,9 +40,9 @@ void frameData::lineData::gatherLinesDecompression_AVX2(const T* in) {
 		Vec8i y = extend(Vec8us().load(&(yIndexes[i])));
 
 		for (int component = 0; component < 3; component++) {
-			auto compInPtr = in + (height * height * component);
-			gather(compInPtr, x + y * height).store(&(inTopLine[component][i]));
-			gather(compInPtr, x + (height - 1 - y) * height).store(&(inBotLine[component][i]));
+			auto compInPtr = in + (width * height * component);
+			gather(compInPtr, x + y * width).store(&(inTopLine[component][i]));
+			gather(compInPtr, x + (height - 1 - y) * width).store(&(inBotLine[component][i]));
 		}
 
 	}
@@ -112,14 +112,15 @@ void frameData::lineData::storeLinesDecompression_AVX2(T* out) {
 
 template<typename T>
 void frameData::lineData::gatherLinesCompression_AVX2(const T* in) {
-	for (int i = 0; i < lenghtJ; i++) {
+	for (int i = 0; i < lenghtJ; i += Vec8i::size()) {
 
-		int x_access = i * (width / (float)lenghtJ);
+		Vec8i x_access = roundi((Vec8f(i) + Vec8f(0, 1, 2, 3, 4, 5, 6, 7)) * (width / (float)lenghtJ));
+		x_access = (x_access < width) & x_access;
 
 		for (int component = 0; component < 3; component++) {
 			auto compInPtr = in + (width * height * component);
-			inTopLine[component][i] = compInPtr[x_access + y * width];
-			inBotLine[component][i] = compInPtr[x_access + (height - 1 - y) * width];
+			gather(compInPtr, x_access + y * width).store(&(inTopLine[component][i]));
+			gather(compInPtr, x_access + (height - 1 - y) * width).store(&(inBotLine[component][i]));
 		}
 
 	}
