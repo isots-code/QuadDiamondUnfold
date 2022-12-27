@@ -62,7 +62,7 @@ void Compressor::lineDataCompressor::processLine(const void* in, void* out) {
 
 template<typename T>
 void Compressor::lineDataCompressor::gatherLines(const T* in) {
-	for (unsigned long long i = 0; i < len; i++) {
+	for (int i = 0; i < len; i++) {
 
 		int x_access = i * (len / width);
 

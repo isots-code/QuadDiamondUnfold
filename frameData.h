@@ -32,7 +32,6 @@ struct frameData : public ThreadedExecutor {
 		BITS_16
 	};
 
-protected:
 	struct lineData;
 
 public:
@@ -57,8 +56,6 @@ public:
 	virtual std::vector<float> coeffsFunc(double x);
 
 	const bitPerSubPixel_t bitPerSubPixel;
-
-protected:
 
 	struct lineData {
 
