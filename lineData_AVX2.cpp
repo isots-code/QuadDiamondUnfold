@@ -142,11 +142,17 @@ void frameData::lineData::gatherLinesCompression_AVX2(const T* in) {
 
 void frameData::lineData::interpLinesCompression_AVX2(void) {
 
+	const Vec8i clamp_min(0);
+	const Vec8i clamp_max((1 << parent.bitPerSubPixel) - 1);
 	if (parent.customInterp.func != nullptr) {
 		for (int i = 0; i < lenghtJ; i += Vec8f::size()) {
 			for (int component = 0; component < 3; component++) {
 				parent.customInterp.func(lenghtJ, width, i, inTopLine[component], outTopLine[component]);
 				parent.customInterp.func(lenghtJ, width, i, inBotLine[component], outBotLine[component]);
+				Vec8i tempTop = Vec8i().load(&outTopLine[component][i]);
+				Vec8i tempBot = Vec8i().load(&outBotLine[component][i]);
+				max(min(tempTop, clamp_max), clamp_min).store(&(outTopLine[component][i]));
+				max(min(tempBot, clamp_max), clamp_min).store(&(outBotLine[component][i]));
 			}
 		}
 	} else {
@@ -166,8 +172,8 @@ void frameData::lineData::interpLinesCompression_AVX2(void) {
 			}
 
 			for (int component = 0; component < 3; component++) {
-				truncatei(sumTop[component]).store(&(outTopLine[component][i]));
-				truncatei(sumBot[component]).store(&(outBotLine[component][i]));
+				max(min(truncatei(sumTop[component]), clamp_max), clamp_min).store(&(outTopLine[component][i]));
+				max(min(truncatei(sumBot[component]), clamp_max), clamp_min).store(&(outBotLine[component][i]));
 			}
 		}
 	}
@@ -175,17 +181,17 @@ void frameData::lineData::interpLinesCompression_AVX2(void) {
 
 template<typename T>
 void frameData::lineData::storeLinesCompression_AVX2(T* out) {
+	const int halfWidth = width / 2;
 	for (int i = 0; i < lenghtJ; ++i) {
 		int x_access = xIndexes[i];
 		int y_access = yIndexes[i];
 		for (int component = 0; component < 3; component++) {
-			T* compOutPtr = out + ((width / 2) * height * component);
-			compOutPtr[x_access + y_access * width / 2] = std::max(std::min(outTopLine[component][i], (1 << parent.bitPerSubPixel) - 1), 0);
-			compOutPtr[x_access + (height - 1 - y_access) * width / 2] = std::max(std::min(outBotLine[component][i], (1 << parent.bitPerSubPixel) - 1), 0);
+			T* compOutPtr = out + (halfWidth * height * component);
+			compOutPtr[x_access + y_access * halfWidth] = outTopLine[component][i];
+			compOutPtr[x_access + (height - 1 - y_access) * halfWidth] = outBotLine[component][i];
 		}
 	}
 }
-
 
 template<>
 void store2out(const int* in, uint8_t* out, int length, frameData::bitPerSubPixel_t bits) {
