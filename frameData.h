@@ -54,15 +54,15 @@ protected:
 
 	struct lineData {
 
-		lineData(frameData& parent, int y, int width);
+		lineData(frameData& parent, int y, int height);
 
 		lineData() = delete;
 
 		virtual ~lineData();
 
-		void processLine(const void* in, void* out);
+		virtual void processLine(const void* in, void* out);
 
-		void buildLineCoeffs(void);
+		virtual void buildLineCoeffs(void);
 
 	protected:
 		template<typename T>
@@ -73,7 +73,7 @@ protected:
 		template<typename T>
 		void storeLines(T* out);
 
-		void constructGatherLUT(void);
+		virtual void constructGatherLUT(void);
 
 #if INSTRSET >= 8 // AVX2
 		template<typename T>
@@ -83,6 +83,7 @@ protected:
 	public:
 		const int len;
 		const int width;
+		const int height;
 
 	protected:
 		const int y;

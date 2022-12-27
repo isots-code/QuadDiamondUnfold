@@ -6,27 +6,27 @@
 #include "frameData.h"
 
 #if INSTRSET >= 8 // AVX2
-frameData::lineData::lineData(frameData& parent, int y, int width)
-	: len(y * 4 + 2), width(width), y(y), dim(parent.dim), taps(parent.taps), linePad(Vec8i::size()), paddedLen((len / linePad)* linePad + linePad),
-	tapsOffset(-(taps / 2 - taps + 1)), outTopOffset(y* (width * 2)), outBotOffset((width - 1 - y)* (width * 2)), parent(parent) {
+frameData::lineData::lineData(frameData& parent, int y, int height)
+	: len(y * 4 + 2), width(height * 2), height(height), y(y), dim(parent.dim), taps(parent.taps), linePad(Vec8i::size()), paddedLen((len / linePad)* linePad + linePad),
+	tapsOffset(-(taps / 2 - taps + 1)), outTopOffset(y* width), outBotOffset((height - 1 - y)* width), parent(parent) {
 	xIndexes.resize(paddedLen);
 	yIndexes.resize(paddedLen);
-	lineIndexes.resize(width);
+	lineIndexes.resize(height);
 	coeffs.resize(taps);
 	for (auto& subCoeffs : coeffs)
-		subCoeffs.resize(width);
+		subCoeffs.resize(height);
 	constructGatherLUT();
 }
 #else
-frameData::lineData::lineData(frameData& parent, int y, int width)
-	: len(y * 4 + 2), width(width), y(y), dim(parent.dim), taps(parent.taps), linePad(1), paddedLen((len / linePad)* linePad + linePad),
-	tapsOffset(-(taps / 2 - taps + 1)), outTopOffset(y* (width * 2)), outBotOffset((width - 1 - y)* (width * 2)), parent(parent) {
+frameData::lineData::lineData(frameData& parent, int y, int height)
+	: len(y * 4 + 2), width(height * 2), height(height), y(y), dim(parent.dim), taps(parent.taps), linePad(1), paddedLen((len / linePad)* linePad + linePad),
+	tapsOffset(-(taps / 2 - taps + 1)), outTopOffset(y* width), outBotOffset((height - 1 - y)* width), parent(parent) {
 	xIndexes.resize(paddedLen);
 	yIndexes.resize(paddedLen);
-	lineIndexes.resize(width);
+	lineIndexes.resize(height);
 	coeffs.resize(taps);
 	for (auto& subCoeffs : coeffs)
-		subCoeffs.resize(width);
+		subCoeffs.resize(height);
 	constructGatherLUT();
 }
 #endif
@@ -43,8 +43,8 @@ frameData::lineData::~lineData() {
 void frameData::lineData::processLine(const void* in, void* out) {
 	float inTopArray[3][paddedLen + taps];
 	float inBotArray[3][paddedLen + taps];
-	int outTopArray[3][width * 2];
-	int outBotArray[3][width * 2];
+	int outTopArray[3][width];
+	int outBotArray[3][width];
 	inTopLine = { inTopArray[0] + tapsOffset, inTopArray[1] + tapsOffset, inTopArray[2] + tapsOffset };
 	inBotLine = { inBotArray[0] + tapsOffset, inBotArray[1] + tapsOffset, inBotArray[2] + tapsOffset };
 	outTopLine = { outTopArray[0] + tapsOffset, outTopArray[1] + tapsOffset, outTopArray[2] + tapsOffset };
@@ -79,9 +79,9 @@ void frameData::lineData::gatherLines(const T* in) {
 		Vec8i y = extend(Vec8us().load(&(yIndexes[i])));
 
 		for (int component = 0; component < 3; component++) {
-			auto compInPtr = in + (width * width * component);
-			gather(compInPtr, x + y * width).store(&(inTopLine[component][i]));
-			gather(compInPtr, x + (width - 1 - y) * width).store(&(inBotLine[component][i]));
+			auto compInPtr = in + (height * height * component);
+			gather(compInPtr, x + y * height).store(&(inTopLine[component][i]));
+			gather(compInPtr, x + (height - 1 - y) * height).store(&(inBotLine[component][i]));
 		}
 
 	}
@@ -104,12 +104,12 @@ void frameData::lineData::interpLines(void) {
 
 	const int Lj = len / 2;
 
-	for (int i = 0; i < width; i += Vec8f::size()) {
+	for (int i = 0; i < height; i += Vec8f::size()) {
 
-		Vec8f sumTR[3] = { Vec8f(0), Vec8f(0) , Vec8f(0) },
-			sumTL[3] = { Vec8f(0), Vec8f(0) , Vec8f(0) },
-			sumBR[3] = { Vec8f(0), Vec8f(0) , Vec8f(0) },
-			sumBL[3] = { Vec8f(0), Vec8f(0) , Vec8f(0) };
+		Vec8f sumTR[3] = { Vec8f(0.5f), Vec8f(0.5f) , Vec8f(0.5f) },
+			sumTL[3] = { Vec8f(0.5f), Vec8f(0.5f) , Vec8f(0.5f) },
+			sumBR[3] = { Vec8f(0.5f), Vec8f(0.5f) , Vec8f(0.5f) },
+			sumBL[3] = { Vec8f(0.5f), Vec8f(0.5f) , Vec8f(0.5f) };
 		Vec8i indexes = extend(Vec8us().load(&(lineIndexes[i])));
 		Vec8i baseIndex(lineIndexes[i]);
 
@@ -124,10 +124,10 @@ void frameData::lineData::interpLines(void) {
 		}
 
 		for (int component = 0; component < 3; component++) {
-			roundi(sumTL[component] + 0.5f).store(&(outTopLine[component][i]));
-			roundi(sumTR[component] + 0.5f).store(&(outTopLine[component][i + width]));
-			roundi(sumBL[component] + 0.5f).store(&(outBotLine[component][i]));
-			roundi(sumBR[component] + 0.5f).store(&(outBotLine[component][i + width]));
+			truncatei(sumTL[component]).store(&(outTopLine[component][i]));
+			truncatei(sumTR[component]).store(&(outTopLine[component][i + height]));
+			truncatei(sumBL[component]).store(&(outBotLine[component][i]));
+			truncatei(sumBR[component]).store(&(outBotLine[component][i + height]));
 		}
 	}
 }
@@ -135,9 +135,9 @@ void frameData::lineData::interpLines(void) {
 template<typename T>
 void frameData::lineData::storeLines(T* out) {
 	for (int component = 0; component < 3; component++) {
-		auto compOutPtr = out + (width * width * 2 * component);
-		store2out(outTopLine[component], compOutPtr + outTopOffset, width * 2);
-		store2out(outBotLine[component], compOutPtr + outBotOffset, width * 2);
+		auto compOutPtr = out + (height * width * component);
+		store2out(outTopLine[component], compOutPtr + outTopOffset, width);
+		store2out(outBotLine[component], compOutPtr + outBotOffset, width);
 	}
 }
 
@@ -151,9 +151,9 @@ void frameData::lineData::gatherLines(const T* in) {
 		int y_access = yIndexes[i];
 
 		for (int component = 0; component < 3; component++) {
-			auto compInPtr = in + (width * width * component);
-			inTopLine[component][i] = compInPtr[x_access + y_access * width];
-			inBotLine[component][i] = compInPtr[x_access + (width - 1 - y_access) * width];
+			auto compInPtr = in + (height * height * component);
+			inTopLine[component][i] = compInPtr[x_access + y_access * height];
+			inBotLine[component][i] = compInPtr[x_access + (height - 1 - y_access) * height];
 		}
 
 	}
@@ -176,12 +176,12 @@ void frameData::lineData::interpLines(void) {
 
 	const int Lj = len / 2;
 
-	for (int i = 0; i < width; i++) {
+	for (int i = 0; i < height; i++) {
 
-		float sumTR[3] = { 0.0, 0.0 , 0.0 },
-			sumTL[3] = { 0.0, 0.0 , 0.0 },
-			sumBR[3] = { 0.0, 0.0 , 0.0 },
-			sumBL[3] = { 0.0, 0.0 , 0.0 };
+		float sumTR[3] = { 0.5f, 0.5f , 0.5f },
+			sumTL[3] = { 0.5f, 0.5f , 0.5f },
+			sumBR[3] = { 0.5f, 0.5f , 0.5f },
+			sumBL[3] = { 0.5f, 0.5f , 0.5f };
 
 		for (int j = 0; j < taps; j++) {
 			float coeff = coeffs[j][i];
@@ -194,19 +194,19 @@ void frameData::lineData::interpLines(void) {
 		}
 
 		for (int component = 0; component < 3; component++) {
-			outTopLine[component][i] = sumTL[component] + 0.5f;
-			outTopLine[component][i + width] = sumTR[component] + 0.5f;
-			outBotLine[component][i] = sumBL[component] + 0.5f;
-			outBotLine[component][i + width] = sumBR[component] + 0.5f;
+			outTopLine[component][i] = sumTL[component];
+			outTopLine[component][i + height] = sumTR[component];
+			outBotLine[component][i] = sumBL[component];
+			outBotLine[component][i + height] = sumBR[component];
 		}
 	}
 }
 
 template<typename T>
 void frameData::lineData::storeLines(T* out) {
-	for (int i = 0; i < width * 2; ++i) {
+	for (int i = 0; i < width; ++i) {
 		for (int component = 0; component < 3; component++) {
-			auto compOutPtr = out + (width * width * 2 * component);
+			auto compOutPtr = out + (width * height * component);
 			compOutPtr[i + outTopOffset] = std::max(std::min(outTopLine[component][i], (1 << parent.bitPerSubPixel) - 1), 0);
 			compOutPtr[i + outBotOffset] = std::max(std::min(outBotLine[component][i], (1 << parent.bitPerSubPixel) - 1), 0);
 		}
@@ -217,10 +217,10 @@ void frameData::lineData::storeLines(T* out) {
 void frameData::lineData::constructGatherLUT(void) {
 
 	const int Lj = len / 2;
-	const int halfWidth = width / 2;
-	const int x_inner_offset = halfWidth - 2 * y - 1;
-	const int x_left_offset = halfWidth - y - 1;
-	const int x_right_offset = halfWidth + y;
+	const int halfheight = height / 2;
+	const int x_inner_offset = halfheight - 2 * y - 1;
+	const int x_left_offset = halfheight - y - 1;
+	const int x_right_offset = halfheight + y;
 
 	for (int x = 0; x < len; x++) {
 		int temp = abs(Lj - 0.5 - x);
@@ -233,15 +233,15 @@ void frameData::lineData::constructGatherLUT(void) {
 		}
 	}
 
-	const double Dj = Lj / (double)width;
-	for (int x = 0; x < width; x++)
+	const double Dj = Lj / (double)height;
+	for (int x = 0; x < height; x++)
 		lineIndexes[x] = std::floor(Dj * x);
 }
 
 void frameData::lineData::buildLineCoeffs(void) {
 
-	const double distanceJ = (len / 2) / (double)width;
-	for (int x = 0; x < width; x++) {
+	const double distanceJ = len / (double)width;
+	for (int x = 0; x < height; x++) {
 		auto x_ = distanceJ * x;
 		x_ -= floor(x_);
 		auto coeff = parent.coeffsFunc(x_);

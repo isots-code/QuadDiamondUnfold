@@ -1,4 +1,5 @@
 #include "frameDataCustom.h"
+#include "extras.h"
 
 frameDataCustom::frameDataCustom(int dim, int taps, bitPerSubPixel_t bits, interpFunc_t interp, int numThreads) : frameData(dim, taps, bits, numThreads), interp(interp) {
     linesCustom.reserve(dim / 2);
@@ -33,7 +34,7 @@ void frameDataCustom::lineDataCustom::interpLines(void) {
     int increment = 1;
 #endif
 
-    for (int i = 0; i < width * 2; i += increment) {
+    for (int i = 0; i < width; i += increment) {
         for (int component = 0; component < 3; component++) {
             parent.interp(*this, i, inTopLine[component], outTopLine[component]);
             parent.interp(*this, i, inBotLine[component], outBotLine[component]);

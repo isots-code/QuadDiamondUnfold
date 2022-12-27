@@ -165,7 +165,7 @@ struct lanczosN : public frameData {
 #if INSTRSET >= 8 // AVX2
 void centripetalCatMullRomInterpolation(typename frameDataCustom::lineDataCustom& self, const int i, const float* __restrict in, int* __restrict out) {
 
-	const Vec8f Dj((self.len / 2) / (double)self.width);
+	const Vec8f Dj((self.len / 2) / (double)self.height);
 	Vec8f x = Dj * (i + Vec8f(0, 1, 2, 3, 4, 5, 6, 7));
 	Vec8f x_floor = floor(x);
 	x -= x_floor;
