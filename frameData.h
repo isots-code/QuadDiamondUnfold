@@ -63,11 +63,11 @@ public:
 
 		lineData() = delete;
 
-		virtual ~lineData();
+		~lineData();
 
 		virtual void processLine(const void* in, void* out);
 
-		virtual void buildLineCoeffs(void);
+		void buildLineCoeffs(void);
 
 	protected:
 		template<typename T>

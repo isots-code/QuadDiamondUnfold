@@ -19,7 +19,7 @@ int main(int argc, char** argv) {
 
 		frameData* dataLookup;
 		if (argv[2] == nullptr)
-			dataLookup = new lanczos4(dim, frameData::BITS_8);
+			dataLookup = new lanczos4(dim, frameData::BITS_8, 1);
 		else {
 			switch (std::atoi(argv[2])) {
 				case 1:

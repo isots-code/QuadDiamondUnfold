@@ -105,14 +105,14 @@ void frameData::lineData::interpLines(void) {
 	const int Lj = len / 2;
 
 	if (parent.interp != nullptr) {
-		for (int i = 0; i < len; i += Vec8f::size()) {
+		for (int i = 0; i < height; i += Vec8f::size()) {
 			for (int component = 0; component < 3; component++) {
 				parent.interp(*this, i, inTopLine[component], outTopLine[component]);
 				parent.interp(*this, i, inBotLine[component], outBotLine[component]);
 			}
 		}
 	} else {
-		for (int i = 0; i < len; i += Vec8f::size()) {
+		for (int i = 0; i < height; i += Vec8f::size()) {
 			Vec8f sumTR[3] = { Vec8f(0.5f), Vec8f(0.5f) , Vec8f(0.5f) },
 				sumTL[3] = { Vec8f(0.5f), Vec8f(0.5f) , Vec8f(0.5f) },
 				sumBR[3] = { Vec8f(0.5f), Vec8f(0.5f) , Vec8f(0.5f) },

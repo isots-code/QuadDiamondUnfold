@@ -140,9 +140,6 @@ void Compressor::lineDataCompressor::storeLines(T* out) {
 			compOutPtr[i + x_access + (width - 1 - y_access) * height] = std::max(std::min(outBotLine[component][i], (1 << parent.bitPerSubPixel) - 1), 0);
 		}
 	}
-
-	
-		
 }
 
 void Compressor::lineDataCompressor::constructGatherLUT(void) {
