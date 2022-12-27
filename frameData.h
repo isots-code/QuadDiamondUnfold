@@ -1,20 +1,7 @@
 #pragma once
-#define __AVX512F__
-#include <immintrin.h>
-#undef __AVX512F__
 
-#include <cstdint>
-#include <climits>
-#include <chrono>
 #include <vector>
 #include <array>
-
-#include "instrset.h"
-
-#if INSTRSET >= 8 // AVX2
-#include "vectormath_hyp.h"
-#include "vectormath_trig.h"
-#endif
 
 #include "ThreadExecutor.h"
 
@@ -48,6 +35,9 @@ public:
 
 	template<typename T>
 	static void expandUV(T* data, int width, int height);
+
+	template<typename T>
+	static void expandUV_AVX2(T* data, int width, int height);
 
 	void buildFrameCoeffs(void);
 
@@ -83,6 +73,14 @@ public:
 		void storeLinesDecompression(T* out);
 
 		template<typename T>
+		void gatherLinesDecompression_AVX2(const T* in);
+
+		virtual void interpLinesDecompression_AVX2(void);
+
+		template<typename T>
+		void storeLinesDecompression_AVX2(T* out);
+
+		template<typename T>
 		void gatherLinesCompression(const T* in);
 
 		virtual void interpLinesCompression(void);
@@ -90,14 +88,17 @@ public:
 		template<typename T>
 		void storeLinesCompression(T* out);
 
+		template<typename T>
+		void gatherLinesCompression_AVX2(const T* in);
+
+		virtual void interpLinesCompression_AVX2(void);
+
+		template<typename T>
+		void storeLinesCompression_AVX2(T* out);
+
 		virtual void constructGatherLUT(void);
 
 		virtual void constructScatterLUT(void);
-
-#if INSTRSET >= 8 // AVX2
-		template<typename T>
-		void store2out(const int* in, T* out, int length);
-#endif
 
 	public:
 		const bool op;
