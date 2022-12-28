@@ -37,7 +37,7 @@ void ThreadedExecutor::setOBuffers(void* outCurr, void* outNext) {
 void ThreadedExecutor::stop(void) noexcept {
 	if (finished) return;
 	{
-		std::unique_lock<std::mutex> lock(mutex);
+		std::unique_lock lock(mutex);
 		finished = true;
 	}
 	cv.notify_all();
@@ -123,7 +123,7 @@ void ThreadedExecutor::Barrier::arrive_and_drop() {
 	}
 }
 
-ThreadedExecutor::DoubleBuffer::DoubleBuffer(void) : running(true), is_full(false) {}
+ThreadedExecutor::DoubleBuffer::DoubleBuffer(void) : running(true), is_full(false), is_empty(true) {}
 
 void ThreadedExecutor::DoubleBuffer::setBuffers(void* curr, void* next) {
 	active_buffer = curr;
@@ -131,31 +131,43 @@ void ThreadedExecutor::DoubleBuffer::setBuffers(void* curr, void* next) {
 }
 
 void* ThreadedExecutor::DoubleBuffer::Produce(void) {
-	std::unique_lock<std::mutex> lock(mutex);
+	std::unique_lock lock(mutex);
 	while (is_full) {
 		if (!running) return nullptr;
 		// Wait for the consumer to consume some data
 		// and signal that the buffer is not full.
 		full_cv.wait(lock);
+	//// Swap the active and inactive buffers.
+		//std::swap(active_buffer, inactive_buffer);
 	}
 
-	// Swap the active and inactive buffers.
-	std::swap(active_buffer, inactive_buffer);
+	//// Swap the active and inactive buffers.
+		//std::swap(active_buffer, inactive_buffer);
 
+	if (!is_empty)
+		is_full = true;
 	// Signal that the buffer is full.
-	is_full = true;
+	is_empty = false;
 	empty_cv.notify_one();
 	return active_buffer;
 }
 
 void* ThreadedExecutor::DoubleBuffer::Consume(void) {
-	std::unique_lock<std::mutex> lock(mutex);
-	while (!is_full) {
+	std::unique_lock lock(mutex);
+	while (is_empty) {
 		if (!running) return nullptr;
 		// Wait for the producer to produce some data
 		// and signal that the buffer is full.
 		empty_cv.wait(lock);
+	//// Swap the active and inactive buffers.
+		std::swap(active_buffer, inactive_buffer);
 	}
+
+	// Swap the active and inactive buffers.
+	//std::swap(active_buffer, inactive_buffer);
+
+	if (!is_full)
+		is_empty = true;
 
 	// Signal that the buffer is not full.
 	is_full = false;
@@ -164,7 +176,7 @@ void* ThreadedExecutor::DoubleBuffer::Consume(void) {
 }
 
 void ThreadedExecutor::DoubleBuffer::Stop(void) {
-	std::unique_lock<std::mutex> lock(mutex);
+	std::unique_lock lock(mutex);
 	running = false;
 	is_full = true;
 	empty_cv.notify_all();

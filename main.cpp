@@ -13,7 +13,7 @@ int main(int argc, char** argv) {
 	std::string input(argv[1]);
 
 	try {
-		auto decoder = ffmpegDecode(input, true);
+		auto decoder = ffmpegDecode(input);
 		
 		bool op = decoder.getOp();
 
@@ -38,8 +38,12 @@ int main(int argc, char** argv) {
 		dataLookup->setOBuffers(out0.data(), out1.data());
 
 		decoder.connectFrameData(*dataLookup);
-		decoder.startDecode();
-		decoder.startFFPlay(op);
+		decoder.start();
+
+		while (decoder.running) {
+			using namespace std::chrono;
+			std::this_thread::sleep_for(100ms);
+		}
 
 		delete dataLookup;
 

@@ -28,15 +28,17 @@ struct ffmpegDecode {
 
 	bool getOp(void);
 
-	void startDecode(void);
+	void start(void);
 
 	void decodeLoop(void);
 
 	void saveLoop(void);
 
-	void startFFPlay(bool op);
+	void playLoop(void);
 
 	AlignedVector<uint8_t> buffers[2];
+
+	volatile bool running;
 
 private:
 	AVFormatContext* format_ctx;
@@ -46,12 +48,12 @@ private:
 	int video_stream_index;
 	frameData* frameDataLookUp;
 
-	bool running;
-	bool saving;
+	volatile bool saving;
 	volatile bool first;
 
 	std::thread decodeThread;
 	std::thread savingThread;
+	std::thread playThread;
 	std::mutex mutex;
 	std::condition_variable cv;
 	std::queue<const void*> frame_buffer_queue;

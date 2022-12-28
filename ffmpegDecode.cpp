@@ -55,21 +55,19 @@ ffmpegDecode::ffmpegDecode(const std::filesystem::path& input, bool saving) : ru
 	if (!frame)
 		throw std::runtime_error("Error allocating frame");
 
-	//codec_ctx->framerate.num; 
-	//codec_ctx->framerate.den;
-
 }
 
 ffmpegDecode::ffmpegDecode(const std::filesystem::path& input) : ffmpegDecode(input, false) {};
 
 ffmpegDecode::~ffmpegDecode() {
 	decodeThread.join();
+	playThread.join();
 	if (saving) {
 		{
-			std::unique_lock<std::mutex> lock(mutex);
-			running = false;
+			std::unique_lock lock(mutex);
 			cv.notify_all();
 		}
+		cv.notify_all();
 		savingThread.join();
 	}
 	avcodec_close(codec_ctx);
@@ -117,7 +115,8 @@ bool ffmpegDecode::getOp(void) {
 	return !(codec_ctx->height == codec_ctx->width);
 }
 
-void ffmpegDecode::startDecode(void) {
+void ffmpegDecode::start(void) {
+	playThread = std::thread(&ffmpegDecode::playLoop, this);
 	decodeThread = std::thread(&ffmpegDecode::decodeLoop, this);
 	if (saving)
 		savingThread = std::thread(&ffmpegDecode::saveLoop, this);
@@ -177,10 +176,9 @@ void ffmpegDecode::decodeLoop(void) {
 
 	}
 	running = false;
-	//frameDataLookUp->writeInput();
 }
 
-void ffmpegDecode::saveLoop() {
+void ffmpegDecode::saveLoop(void) {
 
 	while (first);
 
@@ -192,8 +190,9 @@ void ffmpegDecode::saveLoop() {
 		.lpSecurityDescriptor = nullptr,
 		.bInheritHandle = TRUE
 	};
-	if (!CreatePipe(&hReadPipe, &hWritePipe, &sa, (dim * dim * 3) * (op ? 1 : 2))) {
-		std::cout << "Failed to create pipes\n";
+	if (!CreatePipe(&hReadPipe, &hWritePipe, &sa, (dim * dim * 3) * (op ? 2 : 1))) {
+		std::cout << "Failed to create pipes";
+		return;
 	}
 
 	SetHandleInformation(hWritePipe, HANDLE_FLAG_INHERIT, 0);
@@ -219,13 +218,14 @@ void ffmpegDecode::saveLoop() {
 
 	// Create the ffplay process
 	if (!CreateProcessA(nullptr, (LPSTR)cmd.c_str(), nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi)) {
-		throw std::runtime_error("Failed to create process");
+		std::cout << "Failed to create process";
+		return;
 	}
 
 	unsigned long bytesWritten;
 	while (running) {
-		std::unique_lock<std::mutex> lock(mutex);
-		cv.wait(lock, [this]() { return running; });
+		std::unique_lock lock(mutex);
+		cv.wait(lock);
 		if (!running)
 			break;
 		if (frame_buffer_queue.empty())
@@ -233,7 +233,8 @@ void ffmpegDecode::saveLoop() {
 		auto buffer = frame_buffer_queue.front();
 		frame_buffer_queue.pop();
 		if (!WriteFile(hWritePipe, buffer, (dim * dim * 3) * (op ? 1 : 2), &bytesWritten, nullptr)) {
-			throw std::runtime_error("Failed to write to pipe");
+			std::cout << "Failed to write to pipe";
+			break;
 		}
 	}
 
@@ -242,76 +243,75 @@ void ffmpegDecode::saveLoop() {
 	CloseHandle(hWritePipe);
 	CloseHandle(pi.hProcess);
 	CloseHandle(pi.hThread);
-
 }
 
-void ffmpegDecode::startFFPlay(bool op) {
-	std::thread([&](int dim) {
+void ffmpegDecode::playLoop(void) {
 
-		while (first);
+	while (first);
 
-		// Create pipes
-		HANDLE hReadPipe, hWritePipe;
-		SECURITY_ATTRIBUTES sa = {
-			.lpSecurityDescriptor = nullptr,
-			.bInheritHandle = TRUE
-		};
-		if (!CreatePipe(&hReadPipe, &hWritePipe, &sa, (dim * dim * 3) * (op ? 1 : 2))) {
-			std::cout << "Failed to create pipes\n";
-			return 1;
+	int dim = codec_ctx->height;
+	bool op = getOp();
+
+	// Create pipes
+	HANDLE hReadPipe, hWritePipe;
+	SECURITY_ATTRIBUTES sa = {
+		.lpSecurityDescriptor = nullptr,
+		.bInheritHandle = TRUE
+	};
+	if (!CreatePipe(&hReadPipe, &hWritePipe, &sa, (dim * dim * 3) * (op ? 2 : 1))) {
+		std::cout << "Failed to create pipes\n";
+		return;
+	}
+
+	SetHandleInformation(hWritePipe, HANDLE_FLAG_INHERIT, 0);
+
+	STARTUPINFOA si = {
+		.dwFlags = STARTF_USESTDHANDLES,
+		.hStdInput = hReadPipe,
+		.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE),
+		.hStdError = GetStdHandle(STD_ERROR_HANDLE),
+	};
+
+	PROCESS_INFORMATION pi = {};
+
+	// Set up the command line for ffplay
+	std::string cmd("ffplay -autoexit ");
+	if (op)
+		cmd += "-x 720 -y 720";
+	else
+		cmd += "-x 1440 -y 720";
+	cmd += " -f rawvideo -pixel_format yuv444p -framerate ";
+	cmd += std::to_string(codec_ctx->framerate.num) + "/" + std::to_string(codec_ctx->framerate.den);
+	cmd += " -video_size ";
+	if (op)
+		cmd += std::to_string(dim) + "x" + std::to_string(dim) + " -i pipe:0";
+	else
+		cmd += std::to_string(dim * 2) + "x" + std::to_string(dim) + " -i pipe:0";
+
+	// Create the ffplay process
+	if (!CreateProcessA(nullptr, (LPSTR)cmd.c_str(), nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi)) {
+		std::cout << "Failed to create process\n";
+		return;
+	}
+
+	unsigned long bytesWritten;
+	while (running) {
+		auto buffer = frameDataLookUp->readOutput();
+		if (!WriteFile(hWritePipe, buffer, (dim * dim * 3) * (op ? 1 : 2), &bytesWritten, nullptr)) {
+			std::cout << "Failed to write to pipe";
+			break;
 		}
-
-		SetHandleInformation(hWritePipe, HANDLE_FLAG_INHERIT, 0);
-
-		STARTUPINFOA si = {
-			.dwFlags = STARTF_USESTDHANDLES,
-			.hStdInput = hReadPipe,
-			.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE),
-			.hStdError = GetStdHandle(STD_ERROR_HANDLE),
-		};
-
-		PROCESS_INFORMATION pi = {};
-
-		// Set up the command line for ffplay
-		std::string cmd("ffplay -autoexit ");
-		if (op)
-			cmd += "-x 720 -y 720";
-		else
-			cmd += "-x 1440 -y 720";
-		cmd += " -f rawvideo -pixel_format yuv444p -framerate ";
-		cmd += std::to_string(codec_ctx->framerate.num) + "/" + std::to_string(codec_ctx->framerate.den);
-		cmd += " -video_size ";
-		if (op)
-			cmd += std::to_string(dim) + "x" + std::to_string(dim) + " -i pipe:0";
-		else
-			cmd += std::to_string(dim * 2) + "x" + std::to_string(dim) + " -i pipe:0";
-
-		// Create the ffplay process
-		if (!CreateProcessA(nullptr, (LPSTR)cmd.c_str(), nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi)) {
-			std::cout << "Failed to create process\n";
-			return -1;
+		if (saving) {
+			std::unique_lock lock(mutex);
+			frame_buffer_queue.push(buffer);
+			cv.notify_one();
 		}
+	}
 
-		unsigned long bytesWritten;
-		while (running) {
-			auto buffer = frameDataLookUp->readOutput();
-			if (!WriteFile(hWritePipe, buffer, (dim * dim * 3) * (op ? 1 : 2), &bytesWritten, nullptr)) {
-				std::cout << "Failed to write to pipe\n";
-				return -1;
-			}
-			if (saving) {
-				std::unique_lock<std::mutex> lock(mutex);
-				frame_buffer_queue.push(buffer);
-				cv.notify_one();
-			}
-		}
-
-		// Clean up
-		CloseHandle(hReadPipe);
-		CloseHandle(hWritePipe);
-		CloseHandle(pi.hProcess);
-		CloseHandle(pi.hThread);
-		return 0;
-	}, codec_ctx->height).join();
+	// Clean up
+	CloseHandle(hReadPipe);
+	CloseHandle(hWritePipe);
+	CloseHandle(pi.hProcess);
+	CloseHandle(pi.hThread);
 
 }

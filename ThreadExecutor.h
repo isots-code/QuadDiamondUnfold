@@ -68,6 +68,7 @@ protected:
 	private:
 		bool running;
 		volatile bool is_full;
+		volatile bool is_empty;
 		void* active_buffer;
 		void* inactive_buffer;
 		std::mutex mutex;
