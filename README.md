@@ -1,5 +1,11 @@
 # QuadDiamondUnfold
 
+# NEW (28-12-22)
+
+Compressor code has been added, it auto detects if both dimensions are the same and select the appropriate operation. It even has a (mostly) vectorized function.
+
+Also new, dynamic dispatch, compile all code with normal arguments and the files ending in AVX2 and link it all together, it will dispath according to your CPU.
+
 # NEW (26-12-22)
 
 Scalar code has been added, so its now possible to run on stuff older then Haswell, although, not recommended as the performance is weak.
@@ -21,7 +27,7 @@ The main purpose of this is to, in real time, do a sort of unfold of a video and
 
 This project is about reversing the transformation so as to be viewed as the original format.
 
-Later, i will add code to do the transformation (but not a fast one) so you can try it on your videos.
+~~Later, i will add code to do the transformation (but not a fast one) so you can try it on your videos.~~ Done
 
 This also is for me to get a bit more hands on with C++ and SIMD in x86 since my main language till a few months ago was embedded C.
 

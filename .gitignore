@@ -38,3 +38,6 @@ x64/
 *.vcxproj*
 
 OUT/
+
+*.mp4
+!media/*.mp4
