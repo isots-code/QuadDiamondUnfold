@@ -10,7 +10,7 @@ frameData::lineData::lineData(frameData& parent, int y)
 	tapsOffset(-(taps / 2 - taps + 1)), outTopOffset(y * width), outBotOffset((height - 1 - y)* width), parent(parent) {
 	xIndexes.resize(paddedLen);
 	yIndexes.resize(paddedLen);
-	lineIndexes.resize(op ? width / 2 : 0);
+	lineIndexes.resize(op ? 0 : width / 2);
 	coeffs.resize(taps);
 	for (auto& subCoeffs : coeffs)
 		subCoeffs.resize(op ? lenghtJ : width / 2);

@@ -8,12 +8,16 @@ extern "C" {
 
 #include <thread>
 #include <filesystem>
+#include <mutex>
+#include <condition_variable>
+#include <queue>
 
 #include "AlignedVector.h"
 
 struct frameData;
 
 struct ffmpegDecode {
+	ffmpegDecode(const std::filesystem::path& input, bool saving);
 	ffmpegDecode(const std::filesystem::path& input);
 
 	~ffmpegDecode();
@@ -28,6 +32,8 @@ struct ffmpegDecode {
 
 	void decodeLoop(void);
 
+	void saveLoop(void);
+
 	void startFFPlay(bool op);
 
 	bool running;
@@ -41,6 +47,12 @@ private:
 	int video_stream_index;
 	frameData* frameDataLookUp;
 
+	bool saving;
+
 	std::thread decodeThread;
+	std::thread savingThread;
+	std::mutex mutex;
+	std::condition_variable cv;
+	std::queue<const void*> frame_buffer_queue;
 };
 

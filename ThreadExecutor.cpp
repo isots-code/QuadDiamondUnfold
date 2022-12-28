@@ -11,7 +11,7 @@ inline auto doNotOptimizeAway(T const& datum) {
 
 
 ThreadedExecutor::ThreadedExecutor(const std::size_t numThreads)
-	: numThreads(numThreads), finished(false), allStopped(false), barrier(numThreads, *this) {
+	: numThreads(numThreads), finished(false), barrier(numThreads, *this) {
 	start();
 }
 
@@ -35,8 +35,9 @@ void ThreadedExecutor::setOBuffers(void* outCurr, void* outNext) {
 }
 
 void ThreadedExecutor::stop(void) noexcept {
+	if (finished) return;
 	{
-		std::unique_lock<std::mutex> lockk(mutex);
+		std::unique_lock<std::mutex> lock(mutex);
 		finished = true;
 	}
 	cv.notify_all();
@@ -44,8 +45,6 @@ void ThreadedExecutor::stop(void) noexcept {
 	writeBuffer.Stop();
 	for (auto& thread : mThreads)
 		thread.join();
-	allStopped = true;
-	allStopped.notify_all();
 }
 
 void ThreadedExecutor::completionFunc(void) {
@@ -83,21 +82,16 @@ void ThreadedExecutor::completionFunc(void) {
 };
 
 void ThreadedExecutor::start() {
-	std::thread([&]() {
-		for (auto i = 0u; i < numThreads; ++i) {
-			mThreads.emplace_back([this](int i) {
-				while (true) {
-					barrier.arrive_and_wait();
-					if (finished) [[unlikely]] break; //exit early if we where told to stop
-					kernel(i);
-				}
-				barrier.arrive_and_drop(); //we have to resync
-			}, i);
-		}
-		//while (!allStopped);
-		allStopped.wait(false); //blocks if we're still running
-		std::cout << "Exit\n";
-	}).detach();
+	for (auto i = 0u; i < numThreads; ++i) {
+		mThreads.emplace_back([this](int i) {
+			while (true) {
+				barrier.arrive_and_wait();
+				if (finished) [[unlikely]] break; //exit early if we where told to stop
+				kernel(i);
+			}
+			barrier.arrive_and_drop(); //we have to resync
+		}, i);
+	}
 }
 
 ThreadedExecutor::Barrier::Barrier(std::size_t s, ThreadedExecutor& parent) : size(s), remaining(s), parent(&parent) {}
@@ -151,7 +145,7 @@ void* ThreadedExecutor::DoubleBuffer::Produce(void) {
 	// Signal that the buffer is full.
 	is_full = true;
 	empty_cv.notify_one();
-	return inactive_buffer;
+	return active_buffer;
 }
 
 void* ThreadedExecutor::DoubleBuffer::Consume(void) {

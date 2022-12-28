@@ -28,7 +28,6 @@ protected:
 	const std::size_t numThreads;
 	std::mutex mutex;
 	std::atomic_bool finished;
-	std::atomic_bool allStopped;
 	std::condition_variable cv;
 	std::vector<std::thread> mThreads;
 
@@ -68,7 +67,7 @@ protected:
 
 	private:
 		bool running;
-		bool is_full;
+		volatile bool is_full;
 		void* active_buffer;
 		void* inactive_buffer;
 		std::mutex mutex;

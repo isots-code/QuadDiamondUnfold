@@ -34,15 +34,16 @@ Vec8f gather(const T* in, const Vec8i index) {
 
 template<typename T>
 void frameData::lineData::gatherLinesDecompression_AVX2(const T* in) {
+	const int halfWidth = width / 2;
 	for (unsigned long long i = 0; i < xIndexes.size(); i += Vec8us::size()) {
 
 		Vec8i x = extend(Vec8us().load(&(xIndexes[i])));
 		Vec8i y = extend(Vec8us().load(&(yIndexes[i])));
 
 		for (int component = 0; component < 3; component++) {
-			auto compInPtr = in + (width * height * component);
-			gather(compInPtr, x + y * width).store(&(inTopLine[component][i]));
-			gather(compInPtr, x + (height - 1 - y) * width).store(&(inBotLine[component][i]));
+			auto compInPtr = in + (halfWidth * height * component);
+			gather(compInPtr, x + y * halfWidth).store(&(inTopLine[component][i]));
+			gather(compInPtr, x + (height - 1 - y) * halfWidth).store(&(inBotLine[component][i]));
 		}
 
 	}
