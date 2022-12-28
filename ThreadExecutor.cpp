@@ -137,15 +137,13 @@ void* ThreadedExecutor::DoubleBuffer::Produce(void) {
 		// Wait for the consumer to consume some data
 		// and signal that the buffer is not full.
 		full_cv.wait(lock);
-	//// Swap the active and inactive buffers.
-		//std::swap(active_buffer, inactive_buffer);
 	}
 
-	//// Swap the active and inactive buffers.
-		//std::swap(active_buffer, inactive_buffer);
-
-	if (!is_empty)
+	if (!is_empty) {
 		is_full = true;
+		std::swap(active_buffer, inactive_buffer);
+	}
+
 	// Signal that the buffer is full.
 	is_empty = false;
 	empty_cv.notify_one();
@@ -159,15 +157,12 @@ void* ThreadedExecutor::DoubleBuffer::Consume(void) {
 		// Wait for the producer to produce some data
 		// and signal that the buffer is full.
 		empty_cv.wait(lock);
-	//// Swap the active and inactive buffers.
-		std::swap(active_buffer, inactive_buffer);
 	}
 
-	// Swap the active and inactive buffers.
-	//std::swap(active_buffer, inactive_buffer);
-
-	if (!is_full)
+	if (!is_full) {
 		is_empty = true;
+		std::swap(active_buffer, inactive_buffer);
+	}
 
 	// Signal that the buffer is not full.
 	is_full = false;
