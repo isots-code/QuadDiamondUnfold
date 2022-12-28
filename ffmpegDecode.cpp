@@ -12,7 +12,7 @@
 #include "frameData.h"
 
 ffmpegDecode::ffmpegDecode(const std::filesystem::path& input, bool saving) : running(true), format_ctx(nullptr),
-	codec_ctx(nullptr), codec(nullptr), video_stream_index(-1), frameDataLookUp(nullptr), saving(saving) {
+	codec_ctx(nullptr), codec(nullptr), video_stream_index(-1), frameDataLookUp(nullptr), saving(saving), first(true) {
 
 	auto path = std::filesystem::canonical(input).string();
 	// Open the input file
@@ -55,14 +55,23 @@ ffmpegDecode::ffmpegDecode(const std::filesystem::path& input, bool saving) : ru
 	if (!frame)
 		throw std::runtime_error("Error allocating frame");
 
+	//codec_ctx->framerate.num; 
+	//codec_ctx->framerate.den;
+
 }
 
 ffmpegDecode::ffmpegDecode(const std::filesystem::path& input) : ffmpegDecode(input, false) {};
 
 ffmpegDecode::~ffmpegDecode() {
 	decodeThread.join();
-	if(saving)
+	if (saving) {
+		{
+			std::unique_lock<std::mutex> lock(mutex);
+			running = false;
+			cv.notify_all();
+		}
 		savingThread.join();
+	}
 	avcodec_close(codec_ctx);
 	av_frame_free(&frame);
 	avcodec_free_context(&codec_ctx);
@@ -156,6 +165,9 @@ void ffmpegDecode::decodeLoop(void) {
 			if (ret < 0)
 				throw std::runtime_error("Error filling array");
 
+			if (first) [[unlikely]]
+				first = false;
+
 			frameDataLookUp->writeInput();
 			currentBuffer = !currentBuffer;
 
@@ -169,6 +181,8 @@ void ffmpegDecode::decodeLoop(void) {
 }
 
 void ffmpegDecode::saveLoop() {
+
+	while (first);
 
 	int dim = codec_ctx->height;
 	bool op = getOp();
@@ -194,11 +208,13 @@ void ffmpegDecode::saveLoop() {
 	PROCESS_INFORMATION pi = {};
 
 	// Set up the command line for ffplay
-	std::string cmd;
+	std::string cmd("ffmpeg -f rawvideo -pixel_format yuv444p -r ");
+	cmd += std::to_string(codec_ctx->framerate.num) + "/" + std::to_string(codec_ctx->framerate.den);
+	cmd += " -video_size ";
 	if (op)
-		cmd = std::string("ffmpeg -f rawvideo -pixel_format yuv444p -video_size " + std::to_string(dim) + "x" + std::to_string(dim) + " -i pipe:0");
+		cmd += std::to_string(dim) + "x" + std::to_string(dim) + " -i pipe:0";
 	else
-		cmd = std::string("ffmpeg -f rawvideo -pixel_format yuv444p -video_size " + std::to_string(dim * 2) + "x" + std::to_string(dim) + " -i pipe:0");
+		cmd += std::to_string(dim * 2) + "x" + std::to_string(dim) + " -i pipe:0";
 	cmd += " -c:v libx264 -b:v 10M -y output_" + std::string(op ? "compressed" : "decompressed") + ".mp4";
 
 	// Create the ffplay process
@@ -208,7 +224,14 @@ void ffmpegDecode::saveLoop() {
 
 	unsigned long bytesWritten;
 	while (running) {
-		auto buffer = frameDataLookUp->readOutput();
+		std::unique_lock<std::mutex> lock(mutex);
+		cv.wait(lock, [this]() { return running; });
+		if (!running)
+			break;
+		if (frame_buffer_queue.empty())
+			continue;
+		auto buffer = frame_buffer_queue.front();
+		frame_buffer_queue.pop();
 		if (!WriteFile(hWritePipe, buffer, (dim * dim * 3) * (op ? 1 : 2), &bytesWritten, nullptr)) {
 			throw std::runtime_error("Failed to write to pipe");
 		}
@@ -224,6 +247,9 @@ void ffmpegDecode::saveLoop() {
 
 void ffmpegDecode::startFFPlay(bool op) {
 	std::thread([&](int dim) {
+
+		while (first);
+
 		// Create pipes
 		HANDLE hReadPipe, hWritePipe;
 		SECURITY_ATTRIBUTES sa = {
@@ -247,11 +273,18 @@ void ffmpegDecode::startFFPlay(bool op) {
 		PROCESS_INFORMATION pi = {};
 
 		// Set up the command line for ffplay
-		std::string cmd;
+		std::string cmd("ffplay -autoexit ");
 		if (op)
-			cmd = std::string("ffplay -autoexit -x 720 -y 720 -f rawvideo -pixel_format yuv444p -video_size " + std::to_string(dim) + "x" + std::to_string(dim) + " -i pipe:0");
+			cmd += "-x 720 -y 720";
 		else
-			cmd = std::string("ffplay -autoexit -x 1440 -y 720 -f rawvideo -pixel_format yuv444p -video_size " + std::to_string(dim * 2) + "x" + std::to_string(dim) + " -i pipe:0");
+			cmd += "-x 1440 -y 720";
+		cmd += " -f rawvideo -pixel_format yuv444p -framerate ";
+		cmd += std::to_string(codec_ctx->framerate.num) + "/" + std::to_string(codec_ctx->framerate.den);
+		cmd += " -video_size ";
+		if (op)
+			cmd += std::to_string(dim) + "x" + std::to_string(dim) + " -i pipe:0";
+		else
+			cmd += std::to_string(dim * 2) + "x" + std::to_string(dim) + " -i pipe:0";
 
 		// Create the ffplay process
 		if (!CreateProcessA(nullptr, (LPSTR)cmd.c_str(), nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi)) {

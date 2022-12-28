@@ -36,7 +36,6 @@ struct ffmpegDecode {
 
 	void startFFPlay(bool op);
 
-	bool running;
 	AlignedVector<uint8_t> buffers[2];
 
 private:
@@ -47,7 +46,9 @@ private:
 	int video_stream_index;
 	frameData* frameDataLookUp;
 
+	bool running;
 	bool saving;
+	volatile bool first;
 
 	std::thread decodeThread;
 	std::thread savingThread;

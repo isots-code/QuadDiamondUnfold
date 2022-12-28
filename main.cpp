@@ -13,7 +13,7 @@ int main(int argc, char** argv) {
 	std::string input(argv[1]);
 
 	try {
-		auto decoder = ffmpegDecode(input);
+		auto decoder = ffmpegDecode(input, true);
 		
 		bool op = decoder.getOp();
 
