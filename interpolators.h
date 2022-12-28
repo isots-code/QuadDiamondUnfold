@@ -9,14 +9,14 @@ struct lineData;
 struct interp_t {
 	std::vector<float>(*func)(double x, int taps);
 	int taps;
-	interp_t(void* ptr) { (void)ptr;  };
+	interp_t(void* ptr) { (void)ptr; func = nullptr; taps = 0; };
 	interp_t(std::vector<float>(*func)(double x, int taps), int taps) : func(func), taps(taps) {};
 };
 
 struct customInterp_t {
 	void (*func)(const int width, const int len, const int i, const float* __restrict in, int* __restrict out);
 	int taps;
-	customInterp_t(void* ptr) { (void)ptr;};
+	customInterp_t(void* ptr) { (void)ptr; func = nullptr; taps = 0; };
 	customInterp_t(void (*func)(const int width, const int len, const int i, const float* __restrict in, int* __restrict out), int taps) : func(func), taps(taps) {};
 };
 

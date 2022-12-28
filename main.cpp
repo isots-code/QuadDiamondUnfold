@@ -43,7 +43,6 @@ int main(int argc, char** argv) {
 
 		delete dataLookup;
 
-
 	} catch (std::exception& e) {
 		std::cerr << e.what();
 		return -1;

@@ -1,13 +1,15 @@
 #pragma once
+#include <mutex>
 #include <atomic>
 #include <vector>
 #include <thread>
-#include <mutex>
+#include <condition_variable>
 
 class ThreadedExecutor {
 public:
 
-	explicit ThreadedExecutor(const std::size_t dim, const std::size_t numThreads = 1);
+	explicit ThreadedExecutor(const std::size_t numThreads = 1);
+
 	~ThreadedExecutor();
 
 	const void* readOutput(void);
@@ -23,38 +25,58 @@ protected:
 
 	void* output;
 	const void* input;
-	const std::size_t dim;
 	const std::size_t numThreads;
-	std::atomic_bool mStopped;
-	std::atomic_bool mRunning;
+	std::mutex mutex;
+	std::atomic_bool finished;
+	std::atomic_bool allStopped;
+	std::condition_variable cv;
 	std::vector<std::thread> mThreads;
+
+	void completionFunc(void);
 
 	void start();
 
-private:
-	void loop(void);
+	struct Barrier {
+		std::size_t size;
+		mutable std::mutex m;
+		std::condition_variable cv;
+		std::ptrdiff_t remaining;
+		std::ptrdiff_t phase = 0;
+		ThreadedExecutor* parent;
 
-protected:
-	class DoubleBuffer {
-	public:
+		Barrier(std::size_t s, ThreadedExecutor& parent);
 
-		DoubleBuffer(void);
+		void arrive_and_wait();
 
-		void* write(void);
-		const void* read(void);
-		void swap(void);
-		void setBuffers(void* curr, void* nxt);
-		void signalStop(void);
+		void arrive_and_drop();
 
-	private:
-		void* next = nullptr;
-		void* current = nullptr;
-		std::mutex stateMtx;
-		bool stopExit = false;
-		std::atomic_bool readValid;
-		std::atomic_bool writeValid;
 	};
 
-	DoubleBuffer inputBuf;
-	DoubleBuffer outputBuf;
+	Barrier barrier;
+
+	class DoubleBuffer {
+	public:
+		DoubleBuffer(void);
+
+		void setBuffers(void* curr, void* next);
+
+		void* Produce(void);
+
+		void* Consume(void);
+
+		void Stop(void);
+
+	private:
+		bool running;
+		bool is_full;
+		void* active_buffer;
+		void* inactive_buffer;
+		std::mutex mutex;
+		std::condition_variable full_cv;
+		std::condition_variable empty_cv;
+	};
+
+	DoubleBuffer readBuffer;
+	DoubleBuffer writeBuffer;
+
 };
