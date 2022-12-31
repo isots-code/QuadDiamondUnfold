@@ -221,6 +221,7 @@ void ffmpegDecode::saveLoop(void) {
 			std::cout << "Failed to write to pipe";
 			break;
 		}
+		std::free(buffer);
 	}
 
 	// Clean up
@@ -287,8 +288,10 @@ void ffmpegDecode::playLoop(void) {
 			break;
 		}
 		if (saving) {
+			auto bufferCopy = std::malloc((dim * dim * 3) * (op ? 1 : 2));
+			std::memcpy(bufferCopy, buffer, (dim * dim * 3) * (op ? 1 : 2));
 			std::unique_lock lock(mutex);
-			frame_buffer_queue.push(buffer);
+			frame_buffer_queue.push(bufferCopy);
 			cv.notify_one();
 		}
 		frameDataLookUp->returnOutputBuffer(buffer);

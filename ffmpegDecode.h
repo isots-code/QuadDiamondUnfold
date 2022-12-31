@@ -52,6 +52,6 @@ private:
 	std::thread playThread;
 	std::mutex mutex;
 	std::condition_variable cv;
-	std::queue<const void*> frame_buffer_queue;
+	std::queue<void*> frame_buffer_queue;
 };
 
