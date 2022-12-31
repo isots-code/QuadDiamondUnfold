@@ -95,25 +95,11 @@ void ffmpegDecode::connectFrameData(frameData& frameData) {
 		default:
 			break;
 	}
-	buffers[0] = AlignedVector<uint8_t>(buffer_size);
-	if (buffers[0].data() == nullptr)
-		throw std::runtime_error("Error allocating buffer");
-
-	buffers[1] = AlignedVector<uint8_t>(buffer_size);
-	if (buffers[1].data() == nullptr)
-		throw std::runtime_error("Error allocating buffer");
-
-	frameDataLookUp->setIBuffers(buffers[0].data(), buffers[1].data());
-
 }
 
-int ffmpegDecode::getDim(void) {
-	return codec_ctx->height;
-}
+int ffmpegDecode::getDim(void) { return codec_ctx->height; }
 
-bool ffmpegDecode::getOp(void) {
-	return !(codec_ctx->height == codec_ctx->width);
-}
+bool ffmpegDecode::getOp(void) { return !(codec_ctx->height == codec_ctx->width); }
 
 void ffmpegDecode::start(void) {
 	playThread = std::thread(&ffmpegDecode::playLoop, this);
@@ -124,7 +110,6 @@ void ffmpegDecode::start(void) {
 
 void ffmpegDecode::decodeLoop(void) {
 
-	bool currentBuffer;
 	AVPacket packet;
 	while (av_read_frame(format_ctx, &packet) >= 0) {
 	  // Check if the packet is from the video stream
@@ -147,14 +132,15 @@ void ffmpegDecode::decodeLoop(void) {
 
 			// Frame successfully decoded
 			// Fill the array with the raw frame data
+			auto buffer = frameDataLookUp->getInputBuffer();
 			switch (codec_ctx->pix_fmt) {
 
 				case AV_PIX_FMT_YUV444P:
-					ret = av_image_copy_to_buffer(reinterpret_cast<uint8_t*>(buffers[currentBuffer].data()), codec_ctx->width * codec_ctx->height * 3, frame->data, frame->linesize, AV_PIX_FMT_YUV444P, codec_ctx->width, codec_ctx->height, 1);
+					ret = av_image_copy_to_buffer(reinterpret_cast<uint8_t*>(buffer), codec_ctx->width * codec_ctx->height * 3, frame->data, frame->linesize, AV_PIX_FMT_YUV444P, codec_ctx->width, codec_ctx->height, 1);
 					break;
 				case AV_PIX_FMT_YUV420P:
-					ret = av_image_copy_to_buffer(reinterpret_cast<uint8_t*>(buffers[currentBuffer].data()), codec_ctx->width * codec_ctx->height * 3 / 2, frame->data, frame->linesize, AV_PIX_FMT_YUV420P, codec_ctx->width, codec_ctx->height, 1);
-					frameData::expandUV(buffers[currentBuffer].data() + codec_ctx->width * codec_ctx->height, codec_ctx->width, codec_ctx->height);
+					ret = av_image_copy_to_buffer(reinterpret_cast<uint8_t*>(buffer), codec_ctx->width * codec_ctx->height * 3 / 2, frame->data, frame->linesize, AV_PIX_FMT_YUV420P, codec_ctx->width, codec_ctx->height, 1);
+					frameData::expandUV(reinterpret_cast<uint8_t*>(buffer) + codec_ctx->width * codec_ctx->height, codec_ctx->width, codec_ctx->height);
 					break;
 				default:
 					throw std::runtime_error("Unsuported pixel format");
@@ -167,8 +153,7 @@ void ffmpegDecode::decodeLoop(void) {
 			if (first) [[unlikely]]
 				first = false;
 
-			frameDataLookUp->writeInput();
-			currentBuffer = !currentBuffer;
+			frameDataLookUp->queueInputBuffer(buffer);
 
 		}
 		// Free the packet
@@ -296,7 +281,7 @@ void ffmpegDecode::playLoop(void) {
 
 	unsigned long bytesWritten;
 	while (running) {
-		auto buffer = frameDataLookUp->readOutput();
+		auto buffer = frameDataLookUp->dequeueOutputBuffer();
 		if (!WriteFile(hWritePipe, buffer, (dim * dim * 3) * (op ? 1 : 2), &bytesWritten, nullptr)) {
 			std::cout << "Failed to write to pipe";
 			break;
@@ -306,6 +291,7 @@ void ffmpegDecode::playLoop(void) {
 			frame_buffer_queue.push(buffer);
 			cv.notify_one();
 		}
+		frameDataLookUp->returnOutputBuffer(buffer);
 	}
 
 	// Clean up

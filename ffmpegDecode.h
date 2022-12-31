@@ -12,8 +12,6 @@ extern "C" {
 #include <condition_variable>
 #include <queue>
 
-#include "AlignedVector.h"
-
 struct frameData;
 
 struct ffmpegDecode {
@@ -35,8 +33,6 @@ struct ffmpegDecode {
 	void saveLoop(void);
 
 	void playLoop(void);
-
-	AlignedVector<uint8_t> buffers[2];
 
 	volatile bool running;
 

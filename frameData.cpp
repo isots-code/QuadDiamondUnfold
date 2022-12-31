@@ -1,16 +1,16 @@
 #include "frameData.h"
 
 frameData::frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, customInterp_t customInterp, int numThreads)
-	: ThreadedExecutor(numThreads), bitPerSubPixel(bits), op(op), taps(taps),
-		width(2 * dim), height(dim), interp(nullptr), customInterp(customInterp) {
+	: ThreadedExecutor((dim * dim * 3) * (op ? 2 : 1), (dim * dim * 3) * (op ? 1 : 2), numThreads)
+	, bitPerSubPixel(bits), op(op), taps(taps), width(2 * dim), height(dim), interp(nullptr), customInterp(customInterp) {
 	lines.reserve(height / 2);
 	for (int i = 0; i < height / 2; i++)
 		lines.emplace_back(*this, i);
 }
 
 frameData::frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, interp_t interp, int numThreads)
-	: ThreadedExecutor(numThreads), bitPerSubPixel(bits), op(op), taps(taps),
-	width(2 * dim), height(dim), interp(interp), customInterp(nullptr) {
+	: ThreadedExecutor((dim * dim * 3) * (op ? 2 : 1), (dim * dim * 3) * (op ? 1 : 2), numThreads),
+	bitPerSubPixel(bits), op(op), taps(taps), width(2 * dim), height(dim), interp(interp), customInterp(nullptr) {
 	lines.reserve(height / 2);
 	for (int i = 0; i < height / 2; i++)
 		lines.emplace_back(*this, i);
@@ -26,10 +26,7 @@ frameData::frameData(bool op, int dim, bitPerSubPixel_t bits, interp_t interp) :
 frameData::frameData(bool op, int dim, bitPerSubPixel_t bits, int numThreads) : frameData(op, dim, interpolators[LANCZOS4].taps, bits, interpolators[LANCZOS4], numThreads) {}
 frameData::frameData(bool op, int dim, bitPerSubPixel_t bits) : frameData(op, dim, interpolators[LANCZOS4].taps, bits, interpolators[LANCZOS4], std::thread::hardware_concurrency()) {}
 
-frameData::~frameData() {
-	this->stop();
-	lines.clear();
-}
+frameData::~frameData() { lines.clear(); }
 
 template<typename T>
 void frameData::expandUV(T* data, int width, int height) {

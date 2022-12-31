@@ -23,9 +23,6 @@ int main(int argc, char** argv) {
 
 		int dim = decoder.getDim();
 
-		AlignedVector<uint8_t> out0(dim * dim * 2 * 3);
-		AlignedVector<uint8_t> out1(dim * dim * 2 * 3);
-
 		frameData* dataLookup;
 		if (interpChoice == -1)
 			dataLookup = new frameData(op, dim, frameData::BITS_8);
@@ -35,7 +32,6 @@ int main(int argc, char** argv) {
 			dataLookup = new frameData(op, dim, frameData::BITS_8, customInterpolators[interpChoice]);
 		else 
 			throw std::runtime_error("Unsupported interpolator");
-		dataLookup->setOBuffers(out0.data(), out1.data());
 
 		decoder.connectFrameData(*dataLookup);
 		decoder.start();
