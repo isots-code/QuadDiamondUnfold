@@ -26,7 +26,7 @@ frameData::frameData(bool op, int dim, bitPerSubPixel_t bits, interp_t interp) :
 frameData::frameData(bool op, int dim, bitPerSubPixel_t bits, int numThreads) : frameData(op, dim, interpolators[LANCZOS4].taps, bits, interpolators[LANCZOS4], numThreads) {}
 frameData::frameData(bool op, int dim, bitPerSubPixel_t bits) : frameData(op, dim, interpolators[LANCZOS4].taps, bits, interpolators[LANCZOS4], std::thread::hardware_concurrency()) {}
 
-frameData::~frameData() { lines.clear(); }
+frameData::~frameData() { this->stop(); }
 
 template<typename T>
 void frameData::expandUV(T* data, int width, int height) {

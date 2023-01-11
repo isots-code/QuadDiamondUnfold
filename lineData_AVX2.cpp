@@ -69,8 +69,8 @@ void frameData::lineData::interpLinesDecompression_AVX2(void) {
 	if (parent.customInterp.func != nullptr) {
 		for (int i = 0; i < width; i += Vec8f::size()) {
 			for (int component = 0; component < 3; component++) {
-				parent.customInterp.func(lenghtJ, width, i, inTopLine[component], outTopLine[component]);
-				parent.customInterp.func(lenghtJ, width, i, inBotLine[component], outBotLine[component]);
+				parent.customInterp.func(false, width, lenghtJ, i, inTopLine[component], outTopLine[component]);
+				parent.customInterp.func(false, width, lenghtJ, i, inBotLine[component], outBotLine[component]);
 			}
 		}
 	} else {
@@ -148,8 +148,8 @@ void frameData::lineData::interpLinesCompression_AVX2(void) {
 	if (parent.customInterp.func != nullptr) {
 		for (int i = 0; i < lenghtJ; i += Vec8f::size()) {
 			for (int component = 0; component < 3; component++) {
-				parent.customInterp.func(lenghtJ, width, i, inTopLine[component], outTopLine[component]);
-				parent.customInterp.func(lenghtJ, width, i, inBotLine[component], outBotLine[component]);
+				parent.customInterp.func(true, width, lenghtJ, i, inTopLine[component], outTopLine[component]);
+				parent.customInterp.func(true, width, lenghtJ, i, inBotLine[component], outBotLine[component]);
 				Vec8i tempTop = Vec8i().load(&outTopLine[component][i]);
 				Vec8i tempBot = Vec8i().load(&outBotLine[component][i]);
 				max(min(tempTop, clamp_max), clamp_min).store(&(outTopLine[component][i]));

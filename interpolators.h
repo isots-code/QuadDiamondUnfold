@@ -14,10 +14,10 @@ struct interp_t {
 };
 
 struct customInterp_t {
-	void (*func)(const int width, const int len, const int i, const float* __restrict in, int* __restrict out);
+	void (*func)(const bool op, const int width, const int len, const int i, const float* __restrict in, int* __restrict out);
 	int taps;
 	customInterp_t(void* ptr) { (void)ptr; func = nullptr; taps = 0; };
-	customInterp_t(void (*func)(const int width, const int len, const int i, const float* __restrict in, int* __restrict out), int taps) : func(func), taps(taps) {};
+	customInterp_t(void (*func)(const bool op, const int width, const int len, const int i, const float* __restrict in, int* __restrict out), int taps) : func(func), taps(taps) {};
 };
 
 extern interp_t interpolators[];
@@ -26,13 +26,13 @@ extern customInterp_t customInterpolators[];
 std::vector<float> nearest(double x, int taps);
 std::vector<float> linear(double x, int taps);
 std::vector<float> cubic(double x, int taps);
+std::vector<float> catmull_rom(double x, int taps);
 std::vector<float> lanczos2(double x, int taps);
 std::vector<float> lanczos3(double x, int taps);
 std::vector<float> lanczos4(double x, int taps);
 std::vector<float> lanczosN(double x, int taps);
 
-void centripetalCatMullRomInterpolation(const int width, const int len, const int i, const float* __restrict in, int* __restrict out);
-void centripetalCatMullRomInterpolation_AVX2(const int width, const int len, const int i, const float* __restrict in, int* __restrict out);
+void centripetalCatMullRomInterpolation(const bool op, const int width, const int len, const int i, const float* __restrict in, int* __restrict out);
 
 enum interpolator {
 	NEAREST = 0,
@@ -46,7 +46,6 @@ enum interpolator {
 
 enum customInterpolator {
 	CENTRIPETAL_CATMULL_ROM = interpolator::LANCZOSN + 1,
-	CENTRIPETAL_CATMULL_ROM_AVX2
 };
 
 

@@ -15,7 +15,7 @@ ThreadedExecutor::ThreadedExecutor(int inputSize, int outputSize, const std::siz
 	start();
 }
 
-ThreadedExecutor::~ThreadedExecutor() { stop(); }
+ThreadedExecutor::~ThreadedExecutor() {}
 
 void* ThreadedExecutor::getInputBuffer(void) { return inputBufferPool.GetBuffer(); }
 

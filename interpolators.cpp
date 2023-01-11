@@ -1,9 +1,15 @@
 #include "interpolators.h"
 
+#include "instrset.h"
+
+void centripetalCatMullRomInterpolation_scalar(const bool op, const int width, const int len, const int i, const float* __restrict in, int* __restrict out);
+extern void centripetalCatMullRomInterpolation_AVX2(const bool op, const int width, const int len, const int i, const float* __restrict in, int* __restrict out);
+
 interp_t interpolators[] = {
    { nearest, 1 },
    { linear, 2 },
    { cubic, 4 },
+   { catmull_rom, 4 },
    { lanczos2, 4 },
    { lanczos3, 6 },
    { lanczos4, 8 },
@@ -12,49 +18,59 @@ interp_t interpolators[] = {
 
 customInterp_t customInterpolators[]{
 	{ centripetalCatMullRomInterpolation, 4},
-	{ centripetalCatMullRomInterpolation_AVX2, 4}
 };
 
 std::vector<float> nearest(double x, int taps) {
 	(void)x;
 	(void)taps;
-	return std::vector<float>({ 1.0f });
+	return std::vector<float>({ 1.0 });
 }
 
-
 std::vector<float> linear(double x, int taps) {
-	auto ret = std::vector<float>(taps, 0.0f);
+	auto ret = std::vector<float>(taps, 0.0);
 	ret[0] = 1 - x;
 	ret[1] = x;
 	return ret;
 }
 
 std::vector<float> cubic(double x, int taps) {
-	auto ret = std::vector<float>(taps, 0.0f);
-	ret[0] = -x * (x * (x - 2.0f) + 1.0f);
-	ret[1] = std::powf(x, 2.0f) * (x - 2.0f) + 1.0f;
-	ret[2] = -x * (x * (x - 1.0f) - 1.0f);
-	ret[3] = std::powf(x, 2.0f) * (x - 1.0f);
+	auto ret = std::vector<float>(taps, 0.0);
+	auto x2 = x * x;
+	ret[0] = -x * (x * (x - 2.0) + 1.0);
+	ret[1] = x2 * (x - 2.0) + 1.0;
+	ret[2] = -x * (x * (x - 1.0) - 1.0);
+	ret[3] = x2 * (x - 1.0);
+	return ret;
+}
+
+std::vector<float> catmull_rom(double x, int taps) {
+	auto ret = std::vector<float>(taps, 0.0);
+	auto x2 = x * x;
+	auto x3 = x2 * x;
+	ret[0] = x3 - x2;
+	ret[1] = -3 * x3 + 4 * x2 + x;
+	ret[2] = 3 * x3 - 5 * x2 + 2;
+	ret[3] = -x3 + 2 * x2 - x;
 	return ret;
 }
 
 std::vector<float> lanczos2(double x, int taps) {
-	auto ret = std::vector<float>(taps, 0.0f);
+	auto ret = std::vector<float>(taps, 0.0);
 
-	if (x == 0.0f) {
-		ret[-(taps / 2 - taps + 1)] = 1.0f;
+	if (x == 0.0) {
+		ret[-(taps / 2 - taps + 1)] = 1.0;
 		return ret;
 	}
 
-	auto deg2rad = [](float degrees) -> float {
+	auto deg2rad = [](double degrees) -> double {
 		return degrees * std::numbers::pi / 180;
 	};
 
-	auto sum = 0.0f;
+	auto sum = 0.0;
 	for (unsigned int i = 0; i < ret.size(); i++)
-		sum += ret[i] = (std::cos(deg2rad(i * -90.0f)) * std::sin((-x - 1.0f) * std::numbers::pi / 2.0f) +
-			std::sin(deg2rad(i * -90.0f)) * std::cos((-x - 1.0f) * std::numbers::pi / 2.0f))
-		/ std::powf(i - 1.0f - x, 2.0f);
+		sum += ret[i] = (std::cos(deg2rad(i * -90.0)) * std::sin((-x - 1.0) * std::numbers::pi / 2.0) +
+			std::sin(deg2rad(i * -90.0)) * std::cos((-x - 1.0) * std::numbers::pi / 2.0))
+		/ std::pow(i - 1.0 - x, 2.0);
 
 	for (unsigned int i = 0; i < ret.size(); i++)
 		ret[i] /= sum;
@@ -63,22 +79,22 @@ std::vector<float> lanczos2(double x, int taps) {
 }
 
 std::vector<float> lanczos3(double x, int taps) {
-	auto ret = std::vector<float>(taps, 0.0f);
+	auto ret = std::vector<float>(taps, 0.0);
 
-	if (x == 0.0f) {
-		ret[-(taps / 2 - taps + 1)] = 1.0f;
+	if (x == 0.0) {
+		ret[-(taps / 2 - taps + 1)] = 1.0;
 		return ret;
 	}
 
-	auto deg2rad = [](float degrees) -> float {
-		return degrees * std::numbers::pi / 180;
+	auto deg2rad = [](double degrees) -> double {
+		return degrees * std::numbers::pi / 180.0;
 	};
 
-	auto sum = 0.0f;
+	auto sum = 0.0;
 	for (unsigned int i = 0; i < ret.size(); i++)
-		sum += ret[i] = (std::cos(deg2rad(i * -120.0f)) * std::sin((-x - 2.0f) * std::numbers::pi / 3.0f) +
-			std::sin(deg2rad(i * -120.0f)) * std::cos((-x - 2.0f) * std::numbers::pi / 3.0f))
-		/ std::powf(i - 2.0f - x, 2.0f);
+		sum += ret[i] = (std::cos(deg2rad(i * -120.0)) * std::sin((-x - 2.0) * std::numbers::pi / 3.0) +
+			std::sin(deg2rad(i * -120.0)) * std::cos((-x - 2.0) * std::numbers::pi / 3.0))
+		/ std::pow(i - 2.0 - x, 2.0);
 
 	for (unsigned int i = 0; i < ret.size(); i++)
 		ret[i] /= sum;
@@ -87,22 +103,22 @@ std::vector<float> lanczos3(double x, int taps) {
 }
 
 std::vector<float> lanczos4(double x, int taps) {
-	auto ret = std::vector<float>(taps, 0.0f);
+	auto ret = std::vector<float>(taps, 0.0);
 
-	if (x == 0.0f) {
-		ret[-(taps / 2 - taps + 1)] = 1.0f;
+	if (x == 0.0) {
+		ret[-(taps / 2 - taps + 1)] = 1.0;
 		return ret;
 	}
 
-	auto deg2rad = [](float degrees) -> float {
-		return degrees * std::numbers::pi / 180;
+	auto deg2rad = [](double degrees) -> double {
+		return degrees * std::numbers::pi / 180.0;
 	};
 
-	auto sum = 0.0f;
+	auto sum = 0.0;
 	for (unsigned int i = 0; i < ret.size(); i++)
-		sum += ret[i] = (std::cos(deg2rad(i * -135.0f)) * std::sin((-x - 3.0f) * std::numbers::pi / 4.0f) +
-			std::sin(deg2rad(i * -135.0f)) * std::cos((-x - 3.0f) * std::numbers::pi / 4.0f))
-		/ std::powf(i - 3.0f - x, 2.0f);
+		sum += ret[i] = (std::cos(deg2rad(i * -135.0)) * std::sin((-x - 3.0) * std::numbers::pi / 4.0) +
+			std::sin(deg2rad(i * -135.0)) * std::cos((-x - 3.0) * std::numbers::pi / 4.0))
+		/ std::pow(i - 3.0 - x, 2.0);
 
 	for (unsigned int i = 0; i < ret.size(); i++)
 		ret[i] /= sum;
@@ -111,25 +127,25 @@ std::vector<float> lanczos4(double x, int taps) {
 }
 
 std::vector<float> lanczosN(double x, int taps) {
-	auto ret = std::vector<float>(taps, 0.0f);
+	auto ret = std::vector<float>(taps, 0.0);
 
-	if (x == 0.0f) {
-		ret[-(taps / 2 - taps + 1)] = 1.0f;
+	if (x == 0.0) {
+		ret[-(taps / 2 - taps + 1)] = 1.0;
 		return ret;
 	}
 
-	auto deg2rad = [](float degrees) -> float {
-		return degrees * std::numbers::pi / 180;
+	auto deg2rad = [](double degrees) -> double {
+		return degrees * std::numbers::pi / 180.0;
 	};
 
-	float halfTaps = taps / 2.0f;
-	auto angle = (360.0f / (2.0f * halfTaps)) * (halfTaps - 1.0f);
+	auto halfTaps = taps / 2.0;
+	auto angle = (360.0 / (2.0 * halfTaps)) * (halfTaps - 1.0);
 
-	auto sum = 0.0f;
+	auto sum = 0.0;
 	for (unsigned int i = 0; i < ret.size(); i++)
-		sum += ret[i] = (std::cos(deg2rad(i * -angle)) * std::sin((-x - halfTaps + 1.0f) * std::numbers::pi / (taps / 2)) +
-			std::sin(deg2rad(i * -angle)) * std::cos((-x - halfTaps + 1.0f) * std::numbers::pi / (taps / 2)))
-		/ std::powf(i - halfTaps + 1.0f - x, 2.0f);
+		sum += ret[i] = (std::cos(deg2rad(i * -angle)) * std::sin((-x - halfTaps + 1.0) * std::numbers::pi / (taps / 2)) +
+			std::sin(deg2rad(i * -angle)) * std::cos((-x - halfTaps + 1.0) * std::numbers::pi / (taps / 2)))
+		/ std::pow(i - halfTaps + 1.0 - x, 2.0);
 
 	for (unsigned int i = 0; i < ret.size(); i++)
 		ret[i] /= sum;
@@ -137,10 +153,17 @@ std::vector<float> lanczosN(double x, int taps) {
 	return ret;
 }
 
-void centripetalCatMullRomInterpolation(const int width, const int lenghtJ, const int i, const float* __restrict in, int* __restrict out) {
-	const float Dj = lenghtJ / (double)width;
+void centripetalCatMullRomInterpolation(const bool op, const int width, const int lenghtJ, const int i, const float* __restrict in, int* __restrict out) {
+	if (instrset_detect() >= 8)
+		centripetalCatMullRomInterpolation_AVX2(op, width, lenghtJ, i, in, out);
+	else
+		centripetalCatMullRomInterpolation_scalar(op, width, lenghtJ, i, in, out);
+}
+
+void centripetalCatMullRomInterpolation_scalar(const bool op, const int width, const int lenghtJ, const int i, const float* __restrict in, int* __restrict out) {
+	const float Dj = op ? 1.0f : lenghtJ / (float)width;
 	float x = Dj * i;
-	float x_floor = std::floor(x);
+	float x_floor = std::floorf(x);
 	x -= x_floor;
 	int x_int = x_floor;
 
@@ -149,13 +172,12 @@ void centripetalCatMullRomInterpolation(const int width, const int lenghtJ, cons
 	float x2 = in[x_int + 1];
 	float x3 = in[x_int + 2];
 
-	float t01 = std::pow((x1 - x0) * (x1 - x0) + 1.0, 0.25f);
-	float t12 = std::pow((x2 - x1) * (x2 - x1) + 1.0, 0.25f);
-	float t23 = std::pow((x3 - x2) * (x3 - x2) + 1.0, 0.25f);
+	float t01 = std::powf((x1 - x0) * (x1 - x0) + 1.0f, 0.25f);
+	float t12 = std::powf((x2 - x1) * (x2 - x1) + 1.0f, 0.25f);
+	float t23 = std::powf((x3 - x2) * (x3 - x2) + 1.0f, 0.25f);
 	float m1 = (x2 - x1 + t12 * ((x1 - x0) / t01 - (x2 - x0) / (t01 + t12)));
 	float m2 = (x2 - x1 + t12 * ((x3 - x2) / t23 - (x3 - x1) / (t12 + t23)));
-	float res = (x1 + x * (m1 - x * (2.0 * m1 + m2 + 3.0 * x1 - 3.0 * x2 - x * (m1 + m2 + 2.0 * x1 - 2.0 * x2))));
-	//float res = (2.0f * (x1 - x2) + m1 + m2) * x * x * x + (-3.0f * (x1 - x2) - m1 - m1 - m2) * x * x + (m1) * x + (x1);
+	float res = (((2.0f * (x1 - x2) + m1 + m2) * x + (-3.0f * (x1 - x2) - m1 - m1 - m2)) * x + m1) * x + x1;
 
-	out[i] = std::round(res);
+	out[i] = std::roundf(res);
 }
