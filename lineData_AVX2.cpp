@@ -4,7 +4,6 @@
 
 #include <cmath>
 
-#include "instrset.h"
 #include "vectormath_hyp.h"
 #include "vectormath_trig.h"
 

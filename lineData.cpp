@@ -1,12 +1,10 @@
 #include <cmath>
 
-#include "instrset.h"
-
 #include "frameData.h"
 
 frameData::lineData::lineData(frameData& parent, int y)
 	: op(parent.op), lenghtJ(y * 4 + 2), width(parent.width), height(parent.height), 
-	y(y), taps(parent.taps), linePad(instrset_detect() >= 8 ? 8 : 1), paddedLen((lenghtJ / linePad)* linePad + linePad),
+	y(y), taps(parent.taps), linePad(parent.simd ? 8 : 1), paddedLen((lenghtJ / linePad)* linePad + linePad),
 	tapsOffset(-(taps / 2 - taps + 1)), outTopOffset(y * width), outBotOffset((height - 1 - y)* width), parent(parent) {
 	xIndexes.resize(paddedLen);
 	yIndexes.resize(paddedLen);
@@ -30,7 +28,7 @@ void frameData::lineData::decompressLine(const void* in, void* out) {
 	outBotLine = { outBotArray[0] + tapsOffset, outBotArray[1] + tapsOffset, outBotArray[2] + tapsOffset };
 	switch (this->parent.bitPerSubPixel) {
 		case BITS_8:
-			if (instrset_detect() >= 8) {
+			if (parent.simd) {
 				gatherLinesDecompression_AVX2(reinterpret_cast<const uint8_t*>(in));
 				interpLinesDecompression_AVX2();
 				storeLinesDecompression_AVX2(reinterpret_cast<uint8_t*>(out));
@@ -48,7 +46,7 @@ void frameData::lineData::decompressLine(const void* in, void* out) {
 		case BITS_14:
 		case BITS_15:
 		case BITS_16:
-			if (instrset_detect() >= 8) {
+			if (parent.simd) {
 				gatherLinesDecompression_AVX2(reinterpret_cast<const uint16_t*>(in));
 				interpLinesDecompression_AVX2();
 				storeLinesDecompression_AVX2(reinterpret_cast<uint16_t*>(out));
@@ -72,15 +70,15 @@ void frameData::lineData::compressLine(const void* in, void* out) {
 	outBotLine = { outBotArray[0] + tapsOffset, outBotArray[1] + tapsOffset, outBotArray[2] + tapsOffset };
 	switch (this->parent.bitPerSubPixel) {
 		case BITS_8:
-			//if (instrset_detect() >= 8) {
-			//	gatherLinesCompression_AVX2(reinterpret_cast<const uint8_t*>(in));
-			//	interpLinesCompression_AVX2();
-			//	storeLinesCompression_AVX2(reinterpret_cast<uint8_t*>(out));
-			//} else {
+			if (parent.simd) {
+				gatherLinesCompression_AVX2(reinterpret_cast<const uint8_t*>(in));
+				interpLinesCompression_AVX2();
+				storeLinesCompression_AVX2(reinterpret_cast<uint8_t*>(out));
+			} else {
 				gatherLinesCompression(reinterpret_cast<const uint8_t*>(in));
 				interpLinesCompression();
 				storeLinesCompression(reinterpret_cast<uint8_t*>(out));
-			//}
+			}
 			break;
 		case BITS_9:
 		case BITS_10:
@@ -90,7 +88,7 @@ void frameData::lineData::compressLine(const void* in, void* out) {
 		case BITS_14:
 		case BITS_15:
 		case BITS_16:
-			if (instrset_detect() >= 8) {
+			if (parent.simd) {
 				gatherLinesCompression_AVX2(reinterpret_cast<const uint16_t*>(in));
 				interpLinesCompression_AVX2();
 				storeLinesCompression_AVX2(reinterpret_cast<uint16_t*>(out));

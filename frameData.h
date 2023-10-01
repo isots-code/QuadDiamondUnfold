@@ -21,13 +21,17 @@ struct frameData : public ThreadedExecutor {
 		BITS_16
 	};
 
+	frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, customInterp_t interp, bool simd, int numThread);
 	frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, customInterp_t interp, int numThread);
 	frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, customInterp_t interp);
+	frameData(bool op, int dim, bitPerSubPixel_t bits, customInterp_t interp, bool simd, int numThread);
 	frameData(bool op, int dim, bitPerSubPixel_t bits, customInterp_t interp, int numThread);
 	frameData(bool op, int dim, bitPerSubPixel_t bits, customInterp_t interp);
-	
+
+	frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, interp_t interp, bool simd, int numThread);
 	frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, interp_t interp, int numThread);
 	frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, interp_t interp);
+	frameData(bool op, int dim, bitPerSubPixel_t bits, interp_t interp, bool simd, int numThread);
 	frameData(bool op, int dim, bitPerSubPixel_t bits, interp_t interp, int numThread);
 	frameData(bool op, int dim, bitPerSubPixel_t bits, interp_t interp);
 	frameData(bool op, int dim, bitPerSubPixel_t bits, int numThreads);
@@ -125,6 +129,7 @@ struct frameData : public ThreadedExecutor {
 	};
 
 	const bool op;
+	const bool simd;
 	const int taps;
 	const int width;
 	const int height;

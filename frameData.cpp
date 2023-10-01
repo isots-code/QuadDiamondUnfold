@@ -1,30 +1,36 @@
 #include "frameData.h"
 
-frameData::frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, customInterp_t customInterp, int numThreads)
+#include "instrset.h"
+
+frameData::frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, customInterp_t customInterp, bool simd, int numThreads)
 	: ThreadedExecutor((dim * dim * 3) * (op ? 2 : 1) * ((bits + 7) / 8), (dim * dim * 3) * (op ? 1 : 2) * ((bits + 7) / 8), numThreads)
-	, bitPerSubPixel(bits), op(op), taps(taps), width(2 * dim), height(dim), interp(nullptr), customInterp(customInterp) {
+	, bitPerSubPixel(bits), op(op), taps(taps), width(2 * dim), height(dim), interp(nullptr), customInterp(customInterp), simd(simd ? instrset_detect() >= 8 : false) {
 	lines.reserve(height / 2);
 	for (int i = 0; i < height / 2; i++)
 		lines.emplace_back(*this, i);
 }
 
-frameData::frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, interp_t interp, int numThreads)
+frameData::frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, interp_t interp, bool simd, int numThreads)
 	: ThreadedExecutor((dim * dim * 3) * (op ? 2 : 1) * ((bits + 7) / 8), (dim * dim * 3) * (op ? 1 : 2)  * ((bits + 7) / 8), numThreads),
-	bitPerSubPixel(bits), op(op), taps(taps), width(2 * dim), height(dim), interp(interp), customInterp(nullptr) {
+	bitPerSubPixel(bits), op(op), taps(taps), width(2 * dim), height(dim), interp(interp), customInterp(nullptr), simd(simd ? instrset_detect() >= 8 : false) {
 	lines.reserve(height / 2);
 	for (int i = 0; i < height / 2; i++)
 		lines.emplace_back(*this, i);
 }
 
-frameData::frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, customInterp_t customInterp) : frameData(op, dim, taps, bits, customInterp, std::thread::hardware_concurrency()) {}
-frameData::frameData(bool op, int dim, bitPerSubPixel_t bits, customInterp_t customInterp, int numThreads) : frameData(op, dim, customInterp.taps, bits, customInterp, numThreads) {}
-frameData::frameData(bool op, int dim, bitPerSubPixel_t bits, customInterp_t customInterp) : frameData(op, dim, customInterp.taps, bits, customInterp, std::thread::hardware_concurrency()) {}
+frameData::frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, customInterp_t customInterp, int numThreads) : frameData(op, dim, taps, bits, customInterp, true, numThreads) {}
+frameData::frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, customInterp_t customInterp) : frameData(op, dim, taps, bits, customInterp, true, std::thread::hardware_concurrency()) {}
+frameData::frameData(bool op, int dim, bitPerSubPixel_t bits, customInterp_t customInterp, bool simd, int numThreads) : frameData(op, dim, customInterp.taps, bits, customInterp, simd, numThreads) {}
+frameData::frameData(bool op, int dim, bitPerSubPixel_t bits, customInterp_t customInterp, int numThreads) : frameData(op, dim, customInterp.taps, bits, customInterp, true, numThreads) {}
+frameData::frameData(bool op, int dim, bitPerSubPixel_t bits, customInterp_t customInterp) : frameData(op, dim, customInterp.taps, bits, customInterp, true, std::thread::hardware_concurrency()) {}
 
-frameData::frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, interp_t interp) : frameData(op, dim, taps, bits, interp, std::thread::hardware_concurrency()) {}
-frameData::frameData(bool op, int dim, bitPerSubPixel_t bits, interp_t interp, int numThreads) : frameData(op, dim, interp.taps, bits, interp, numThreads) {}
-frameData::frameData(bool op, int dim, bitPerSubPixel_t bits, interp_t interp) : frameData(op, dim, interp.taps, bits, interp, std::thread::hardware_concurrency()) {}
-frameData::frameData(bool op, int dim, bitPerSubPixel_t bits, int numThreads) : frameData(op, dim, interpolators[LANCZOS4].taps, bits, interpolators[LANCZOS4], numThreads) {}
-frameData::frameData(bool op, int dim, bitPerSubPixel_t bits) : frameData(op, dim, interpolators[LANCZOS4].taps, bits, interpolators[LANCZOS4], std::thread::hardware_concurrency()) {}
+frameData::frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, interp_t interp, int numThreads) : frameData(op, dim, taps, bits, interp, true, numThreads) {}
+frameData::frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, interp_t interp) : frameData(op, dim, taps, bits, interp, true, std::thread::hardware_concurrency()) {}
+frameData::frameData(bool op, int dim, bitPerSubPixel_t bits, interp_t interp, bool simd, int numThreads) : frameData(op, dim, interp.taps, bits, interp, simd, numThreads) {}
+frameData::frameData(bool op, int dim, bitPerSubPixel_t bits, interp_t interp, int numThreads) : frameData(op, dim, interp.taps, bits, interp, true, numThreads) {}
+frameData::frameData(bool op, int dim, bitPerSubPixel_t bits, interp_t interp) : frameData(op, dim, interp.taps, bits, interp, true, std::thread::hardware_concurrency()) {}
+frameData::frameData(bool op, int dim, bitPerSubPixel_t bits, int numThreads) : frameData(op, dim, interpolators[LANCZOS4].taps, bits, interpolators[LANCZOS4], true, numThreads) {}
+frameData::frameData(bool op, int dim, bitPerSubPixel_t bits) : frameData(op, dim, interpolators[LANCZOS4].taps, bits, interpolators[LANCZOS4], true, std::thread::hardware_concurrency()) {}
 
 frameData::~frameData() { this->stop(); }
 

@@ -147,25 +147,32 @@ static void bench(benchmark::State& s, bool op, Args&&... args) {
 #define TAPS benchmark::CreateRange(2, 16, 2)
 
 #define ARGS(...) ArgsProduct({ THREADS_ARGS, SIZE_ARGS, __VA_ARGS__ })
-#define TEST(name, func, args, ...) benchmark::RegisterBenchmark(name, [](auto& st) { func(st, __VA_ARGS__); })->args->MeasureProcessCPUTime()->UseRealTime()->Unit(benchmark::TimeUnit::kMillisecond)->MinTime(30)
+#define TEST(name, func, args, ...) benchmark::RegisterBenchmark(name, [](auto& st) { func(st, __VA_ARGS__); })->args->MeasureProcessCPUTime()->UseRealTime()->Unit(benchmark::TimeUnit::kMillisecond)->MinTime(1)
 
 int main(int argc, char** argv) {
 
 	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench_file<frameDataCustom<bits8_t>>), &(argv[1]))->FILEARGS;
 	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench_file<frameData<bits8_t>>), &(argv[1]))->FILEARGS;
 	
-	TEST("bench_8bit_nearest", bench<uint8_t>, ARGS({ 1 }), 0, frameData::BITS_8, interpolators[interpolator::NEAREST]);
-	TEST("bench_8bit_linear", bench<uint8_t>, ARGS({ 1 }), 0, frameData::BITS_8, interpolators[interpolator::LINEAR]);
-	TEST("bench_8bit_cubic", bench<uint8_t>, ARGS({ 1 }), 0, frameData::BITS_8, interpolators[interpolator::CUBIC]);
-	TEST("bench_8bit_catmull", bench<uint8_t>, ARGS({ 1 }), 0, frameData::BITS_8, interpolators[interpolator::CATMULL_ROM]);
-	TEST("bench_8bit_centrip", bench<uint8_t>, ARGS({ 1 }), 0, frameData::BITS_8, customInterpolators[interpolator::CENTRIPETAL_CATMULL_ROM]);
-	TEST("bench_8bit_lancz4", bench<uint8_t>, ARGS({ 1 }), 0, frameData::BITS_8, interpolators[interpolator::LANCZOS4]);
-	TEST("bench_8bit_lanc_n", bench<uint8_t>, ARGS(TAPS), 0, frameData::BITS_8, interpolators[interpolator::LANCZOSN]);
+	//TEST("bench_8bit_nearest", bench<uint8_t>, ARGS({ 1 }), 0, frameData::BITS_8, interpolators[interpolator::NEAREST]);
+	//TEST("bench_8bit_linear", bench<uint8_t>, ARGS({ 1 }), 0, frameData::BITS_8, interpolators[interpolator::LINEAR]);
+	//TEST("bench_8bit_cubic", bench<uint8_t>, ARGS({ 1 }), 0, frameData::BITS_8, interpolators[interpolator::CUBIC]);
+	//TEST("bench_8bit_catmull", bench<uint8_t>, ARGS({ 1 }), 0, frameData::BITS_8, interpolators[interpolator::CATMULL_ROM]);
+	//TEST("bench_8bit_centrip", bench<uint8_t>, ARGS({ 1 }), 0, frameData::BITS_8, customInterpolators[interpolator::CENTRIPETAL_CATMULL_ROM]);
+	//TEST("bench_8bit_lancz4", bench<uint8_t>, ARGS({ 1 }), 0, frameData::BITS_8, interpolators[interpolator::LANCZOS4]);
+	//TEST("bench_8bit_lanc_n", bench<uint8_t>, ARGS(TAPS), 0, frameData::BITS_8, interpolators[interpolator::LANCZOSN]);
 
-	TEST("bench_10bit_nearest", bench<uint16_t>, ARGS({ 1 }), 0, frameData::BITS_10, interpolators[interpolator::NEAREST]);
-	TEST("bench_12bit_nearest", bench<uint16_t>, ARGS({ 1 }), 0, frameData::BITS_12, interpolators[interpolator::NEAREST]);
-	TEST("bench_14bit_nearest", bench<uint16_t>, ARGS({ 1 }), 0, frameData::BITS_14, interpolators[interpolator::NEAREST]);
-	TEST("bench_16bit_nearest", bench<uint16_t>, ARGS({ 1 }), 0, frameData::BITS_16, interpolators[interpolator::NEAREST]);
+	//TEST("bench_10bit_nearest", bench<uint16_t>, ARGS({ 1 }), 0, frameData::BITS_10, interpolators[interpolator::NEAREST]);
+	//TEST("bench_12bit_nearest", bench<uint16_t>, ARGS({ 1 }), 0, frameData::BITS_12, interpolators[interpolator::NEAREST]);
+	//TEST("bench_14bit_nearest", bench<uint16_t>, ARGS({ 1 }), 0, frameData::BITS_14, interpolators[interpolator::NEAREST]);
+	//TEST("bench_16bit_nearest", bench<uint16_t>, ARGS({ 1 }), 0, frameData::BITS_16, interpolators[interpolator::NEAREST]);
+
+	for (int i = 6; i <= 10; i++) {
+		TEST("bench_scalar_single", bench<uint8_t>, ArgsProduct({ { 1 }, { i }, { 1 } }), 0, frameData::BITS_8, interpolators[interpolator::LANCZOS4], false);
+		TEST("bench_scalar_multi", bench<uint8_t>, ArgsProduct({ { 16 }, { i }, { 1 } }), 0, frameData::BITS_8, interpolators[interpolator::LANCZOS4], false);
+		TEST("bench_avx_single", bench<uint8_t>, ArgsProduct({ { 1 }, { i }, { 1 } }), 0, frameData::BITS_8, interpolators[interpolator::LANCZOS4], true);
+		TEST("bench_avx_multi", bench<uint8_t>, ArgsProduct({ { 16 }, { i }, { 1 } }), 0, frameData::BITS_8, interpolators[interpolator::LANCZOS4], true);
+	}
 
 
 	//these entries are from BENCHMARK_MAIN
