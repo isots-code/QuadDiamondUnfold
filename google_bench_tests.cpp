@@ -9,6 +9,8 @@
 
 #include <Windows.h>
 
+#include "original_version.h"
+
 using namespace std::chrono;
 
 template <typename T, class ...Args>
@@ -167,7 +169,11 @@ int main(int argc, char** argv) {
 	//TEST("bench_14bit_nearest", bench<uint16_t>, ARGS({ 1 }), 0, frameData::BITS_14, interpolators[interpolator::NEAREST]);
 	//TEST("bench_16bit_nearest", bench<uint16_t>, ARGS({ 1 }), 0, frameData::BITS_16, interpolators[interpolator::NEAREST]);
 
+	for (int i = 0; i < (sizeof(inter)/sizeof(*inter)); i++)
+		benchmark::RegisterBenchmark("bench_og_interps", bench_og)->Args({ 6, i })->MeasureProcessCPUTime()->UseRealTime()->Unit(benchmark::TimeUnit::kMillisecond)->MinTime(1);
+
 	for (int i = 6; i <= 10; i++) {
+		benchmark::RegisterBenchmark("bench_og", bench_og)->Args({ i, 5 })->MeasureProcessCPUTime()->UseRealTime()->Unit(benchmark::TimeUnit::kMillisecond)->MinTime(1);
 		TEST("bench_scalar_single", bench<uint8_t>, ArgsProduct({ { 1 }, { i }, { 1 } }), 0, frameData::BITS_8, interpolators[interpolator::LANCZOS4], false);
 		TEST("bench_scalar_multi", bench<uint8_t>, ArgsProduct({ { 16 }, { i }, { 1 } }), 0, frameData::BITS_8, interpolators[interpolator::LANCZOS4], false);
 		TEST("bench_avx_single", bench<uint8_t>, ArgsProduct({ { 1 }, { i }, { 1 } }), 0, frameData::BITS_8, interpolators[interpolator::LANCZOS4], true);
