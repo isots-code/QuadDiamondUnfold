@@ -43,7 +43,7 @@ struct frameData : public ThreadedExecutor {
 	template<typename T>
 	static void expandUV_AVX2(T* data, int width, int height);
 
-	void kernel(const int id);
+	void kernel(const int id) override;
 
 	const bitPerSubPixel_t bitPerSubPixel;
 

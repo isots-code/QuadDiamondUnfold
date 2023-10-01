@@ -28,8 +28,8 @@ int main(int argc, char** argv) {
 			dataLookup = new frameData(op, dim, frameData::BITS_8);
 		else if (interpChoice >= interpolator::NEAREST && interpChoice <= interpolator::LANCZOSN)
 			dataLookup = new frameData(op, dim, frameData::BITS_8, interpolators[interpChoice - interpolator::NEAREST]);
-		else if (interpChoice >= customInterpolator::CENTRIPETAL_CATMULL_ROM && interpChoice <= customInterpolator::CENTRIPETAL_CATMULL_ROM)
-			dataLookup = new frameData(op, dim, frameData::BITS_8, customInterpolators[interpChoice - customInterpolator::CENTRIPETAL_CATMULL_ROM]);
+		else if (interpChoice >= interpolator::CENTRIPETAL_CATMULL_ROM && interpChoice <= interpolator::CENTRIPETAL_CATMULL_ROM)
+			dataLookup = new frameData(op, dim, frameData::BITS_8, customInterpolators[interpChoice - interpolator::CENTRIPETAL_CATMULL_ROM]);
 		else 
 			throw std::runtime_error("Unsupported interpolator");
 

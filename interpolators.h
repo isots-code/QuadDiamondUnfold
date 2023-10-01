@@ -38,14 +38,10 @@ enum interpolator {
 	NEAREST = 0,
 	LINEAR,
 	CUBIC,
+	CATMULL_ROM,
 	LANCZOS2,
 	LANCZOS3,
 	LANCZOS4,
-	LANCZOSN
+	LANCZOSN,
+	CENTRIPETAL_CATMULL_ROM = 0
 };
-
-enum customInterpolator {
-	CENTRIPETAL_CATMULL_ROM = interpolator::LANCZOSN + 1,
-};
-
-
