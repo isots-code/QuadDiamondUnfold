@@ -1,5 +1,3 @@
-#define _CRT_SECURE_NO_WARNINGS
-
 #include "frameData.h"
 
 #include <benchmark/benchmark.h>
@@ -7,7 +5,9 @@
 #include <cstdint>
 #include <vector>
 
+#ifdef _WIN32
 #include <Windows.h>
+#endif
 
 #include "original_version.h"
 
@@ -33,8 +33,10 @@ static void bench(benchmark::State& s, bool op, Args&&... args) {
 	else
 		benchData = new frameData(op, dim, taps, std::forward<Args>(args)..., threads);
 
+#ifdef _WIN32
 	//SetProcessAffinityMask(GetCurrentProcess(), 0x30);
 	SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
+#endif
 
 	benchData->queueInputBuffer(benchData->getInputBuffer());
 	// Main timing loop
@@ -43,7 +45,9 @@ static void bench(benchmark::State& s, bool op, Args&&... args) {
 		benchData->returnOutputBuffer(benchData->dequeueOutputBuffer());
 	}
 
+#ifdef _WIN32
 	SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS);
+#endif
 
 	delete benchData;
 
@@ -104,8 +108,10 @@ static void bench(benchmark::State& s, bool op, Args&&... args) {
 //
 //		std::vector<T> temp(dim * dim * 3 * 2);
 //
+//#ifdef _WIN32
 //		//SetProcessAffinityMask(GetCurrentProcess(), 0x30);
 //		SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
+//#endif
 //
 //		// Main timing loop
 //		for (auto _ : s) {
@@ -113,7 +119,9 @@ static void bench(benchmark::State& s, bool op, Args&&... args) {
 //			benchData.readOutput();
 //		}
 //
+//#ifdef _WIN32
 //		SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS);
+//#endif
 //
 //	}
 //
@@ -149,11 +157,15 @@ static void bench(benchmark::State& s, bool op, Args&&... args) {
 #define TAPS benchmark::CreateRange(2, 16, 2)
 
 #define ARGS(...) ArgsProduct({ THREADS_ARGS, SIZE_ARGS, __VA_ARGS__ })
+<<<<<<< Updated upstream
 #define TEST(name, func, args, ...) benchmark::RegisterBenchmark(name, [](auto& st) { func(st, __VA_ARGS__); })->args->MeasureProcessCPUTime()->UseRealTime()->Unit(benchmark::TimeUnit::kMillisecond)->MinTime(1)
+=======
+#define TEST(name, func, args, ...) benchmark::RegisterBenchmark(name, [=](auto& st) { func(st, __VA_ARGS__); })->args->MeasureProcessCPUTime()->UseRealTime()->Unit(benchmark::TimeUnit::kMillisecond)
+>>>>>>> Stashed changes
 
 int main(int argc, char** argv) {
 
-	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench_file<frameDataCustom<bits8_t>>), &(argv[1]))->FILEARGS;
+	/*//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench_file<frameDataCustom<bits8_t>>), &(argv[1]))->FILEARGS;
 	//benchmark::RegisterBenchmark(EXPAND_TEMPLATE_BENCH(bench_file<frameData<bits8_t>>), &(argv[1]))->FILEARGS;
 	
 	//TEST("bench_8bit_nearest", bench<uint8_t>, ARGS({ 1 }), 0, frameData::BITS_8, interpolators[interpolator::NEAREST]);
@@ -169,6 +181,7 @@ int main(int argc, char** argv) {
 	//TEST("bench_14bit_nearest", bench<uint16_t>, ARGS({ 1 }), 0, frameData::BITS_14, interpolators[interpolator::NEAREST]);
 	//TEST("bench_16bit_nearest", bench<uint16_t>, ARGS({ 1 }), 0, frameData::BITS_16, interpolators[interpolator::NEAREST]);
 
+<<<<<<< Updated upstream
 	for (int i = 0; i < (sizeof(inter)/sizeof(*inter)); i++)
 		benchmark::RegisterBenchmark("bench_og_interps", bench_og)->Args({ 6, i })->MeasureProcessCPUTime()->UseRealTime()->Unit(benchmark::TimeUnit::kMillisecond)->MinTime(1);
 
@@ -178,6 +191,42 @@ int main(int argc, char** argv) {
 		TEST("bench_scalar_multi", bench<uint8_t>, ArgsProduct({ { 16 }, { i }, { 1 } }), 0, frameData::BITS_8, interpolators[interpolator::LANCZOS4], false);
 		TEST("bench_avx_single", bench<uint8_t>, ArgsProduct({ { 1 }, { i }, { 1 } }), 0, frameData::BITS_8, interpolators[interpolator::LANCZOS4], true);
 		TEST("bench_avx_multi", bench<uint8_t>, ArgsProduct({ { 16 }, { i }, { 1 } }), 0, frameData::BITS_8, interpolators[interpolator::LANCZOS4], true);
+=======
+	//for (int i = 6; i <= 10; i++) {
+	//	TEST("bench_og", bench_og, Args({ i, 5 }));
+	//	TEST("bench_scalar_single", bench<uint8_t>, ArgsProduct({ { 1 }, { i }, { 1 } }), 0, frameData::BITS_8, interpolators[interpolator::LANCZOS4], false);
+	//	TEST("bench_scalar_multi", bench<uint8_t>, ArgsProduct({ { std::thread::hardware_concurrency() }, { i }, { 1 } }), 0, frameData::BITS_8, interpolators[interpolator::LANCZOS4], false);
+	//	TEST("bench_avx_single", bench<uint8_t>, ArgsProduct({ { 1 }, { i }, { 1 } }), 0, frameData::BITS_8, interpolators[interpolator::LANCZOS4], true);
+	//	TEST("bench_avx_multi", bench<uint8_t>, ArgsProduct({ { std::thread::hardware_concurrency() }, { i }, { 1 } }), 0, frameData::BITS_8, interpolators[interpolator::LANCZOS4], true);
+	//}*/
+
+	for (int x = 6; x <= 10; x++) {
+
+		for (int i = 0; i < (sizeof(inter) / sizeof(*inter)); i++)
+			TEST("bench_og", bench_og, Args({ x, i }));
+
+		for (int i = 0; i < (sizeof(interpolators) / sizeof(*interpolators)) - 1; i++) {
+			TEST("bench_scalar_single_normal_interp_" + std::to_string(i), bench<uint8_t>, ArgsProduct({ { 1 }, { x }, { 1 } }), 0, frameData::BITS_8, interpolators[i], false);
+			TEST("bench_scalar_multi_normal_interp_" + std::to_string(i), bench<uint8_t>, ArgsProduct({ { std::thread::hardware_concurrency() }, { x }, { 1 } }), 0, frameData::BITS_8, interpolators[i], false);
+			TEST("bench_avx_single_normal_interp_" + std::to_string(i), bench<uint8_t>, ArgsProduct({ { 1 }, { x }, { 1 } }), 0, frameData::BITS_8, interpolators[i], true);
+			TEST("bench_avx_multi_normal_interp_" + std::to_string(i), bench<uint8_t>, ArgsProduct({ { std::thread::hardware_concurrency() }, { x }, { 1 } }), 0, frameData::BITS_8, interpolators[i], true);
+		}
+
+		for (int taps = 2; taps <= 10; taps += 2) {
+			const auto& it = interpolators[interpolator::LANCZOSN];
+			TEST("bench_scalar_single_lanc_n", bench<uint8_t>, ArgsProduct({ { 1 }, { x }, { taps } }), 0, frameData::BITS_8, it, false);
+			TEST("bench_scalar_multi_lanc_n", bench<uint8_t>, ArgsProduct({ { std::thread::hardware_concurrency() }, { x }, { taps } }), 0, frameData::BITS_8, it, false);
+			TEST("bench_avx_single_lanc_n", bench<uint8_t>, ArgsProduct({ { 1 }, { x }, { taps } }), 0, frameData::BITS_8, it, true);
+			TEST("bench_avx_multi_lanc_n", bench<uint8_t>, ArgsProduct({ { std::thread::hardware_concurrency() }, { x }, { taps } }), 0, frameData::BITS_8, it, true);
+		}
+
+		for (int i = 0; i < (sizeof(customInterpolators) / sizeof(*customInterpolators)); i++) {
+			TEST("bench_scalar_single_centri_catmull", bench<uint8_t>, ArgsProduct({ { 1 }, { x }, { 1 } }), 0, frameData::BITS_8, interpolators[i], false);
+			TEST("bench_scalar_multi_centri_catmull", bench<uint8_t>, ArgsProduct({ { std::thread::hardware_concurrency() }, { x }, { 1 } }), 0, frameData::BITS_8, interpolators[i], false);
+			TEST("bench_avx_single_centri_catmull", bench<uint8_t>, ArgsProduct({ { 1 }, { x }, { 1 } }), 0, frameData::BITS_8, interpolators[i], true);
+			TEST("bench_avx_multi_centri_catmull", bench<uint8_t>, ArgsProduct({ { std::thread::hardware_concurrency() }, { x }, { 1 } }), 0, frameData::BITS_8, interpolators[i], true);
+		}
+>>>>>>> Stashed changes
 	}
 
 

@@ -20,9 +20,6 @@ struct customInterp_t {
 	customInterp_t(void (*func)(const bool op, const int width, const int len, const int i, const float* __restrict in, int* __restrict out), int taps) : func(func), taps(taps) {};
 };
 
-extern interp_t interpolators[];
-extern customInterp_t customInterpolators[];
-
 std::vector<float> nearest(double x, int taps);
 std::vector<float> linear(double x, int taps);
 std::vector<float> cubic(double x, int taps);
@@ -33,6 +30,21 @@ std::vector<float> lanczos4(double x, int taps);
 std::vector<float> lanczosN(double x, int taps);
 
 void centripetalCatMullRomInterpolation(const bool op, const int width, const int len, const int i, const float* __restrict in, int* __restrict out);
+
+inline interp_t interpolators[] = {
+   { nearest, 1 },
+   { linear, 2 },
+   { cubic, 4 },
+   { catmull_rom, 4 },
+   { lanczos2, 4 },
+   { lanczos3, 6 },
+   { lanczos4, 8 },
+   { lanczosN, -1 }
+};
+
+inline customInterp_t customInterpolators[] = {
+	{ centripetalCatMullRomInterpolation, 4},
+};
 
 enum interpolator {
 	NEAREST = 0,

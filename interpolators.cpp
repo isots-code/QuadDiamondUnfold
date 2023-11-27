@@ -5,21 +5,6 @@
 void centripetalCatMullRomInterpolation_scalar(const bool op, const int width, const int len, const int i, const float* __restrict in, int* __restrict out);
 extern void centripetalCatMullRomInterpolation_AVX2(const bool op, const int width, const int len, const int i, const float* __restrict in, int* __restrict out);
 
-interp_t interpolators[] = {
-   { nearest, 1 },
-   { linear, 2 },
-   { cubic, 4 },
-   { catmull_rom, 4 },
-   { lanczos2, 4 },
-   { lanczos3, 6 },
-   { lanczos4, 8 },
-   { lanczosN, -1 }
-};
-
-customInterp_t customInterpolators[]{
-	{ centripetalCatMullRomInterpolation, 4},
-};
-
 std::vector<float> nearest(double x, int taps) {
 	(void)x;
 	(void)taps;

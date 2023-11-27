@@ -9,7 +9,7 @@ Also new, dynamic dispatch, compile all code with normal arguments and the files
 # NEW (26-12-22)
 
 Scalar code has been added, so its now possible to run on stuff older then Haswell, although, not recommended as the performance is weak.
-For comparison, my R7 5700x can do around 250 FPS on a 4k + 2k frame size, my old i7 4720HQ can only do 55 IIRC.
+For comparison, my R7 5700x can do around 250 FPS on a 4k \* 2k frame size, my old i7 4720HQ can only do 55 IIRC.
  
 # What's this?
 
