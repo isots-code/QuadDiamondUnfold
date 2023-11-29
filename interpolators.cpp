@@ -138,7 +138,7 @@ std::vector<float> lanczosN(double x, int taps) {
 	return ret;
 }
 
-void centripetalCatMullRomInterpolation(const bool op, const int width, const int lenghtJ, const int i, const float* __restrict in, int* __restrict out) {
+void centrip_catmull_rom(const bool op, const int width, const int lenghtJ, const int i, const float* __restrict in, int* __restrict out) {
 	if (instrset_detect() >= 8)
 		centripetalCatMullRomInterpolation_AVX2(op, width, lenghtJ, i, in, out);
 	else
