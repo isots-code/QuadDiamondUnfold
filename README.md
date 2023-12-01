@@ -1,5 +1,9 @@
 # QuadDiamondUnfold
 
+# CHANGES
+
+<details>
+
 # NEW (30-11-23)
 
 Added some benchmarks for both my PC's for comparison and to show results plus some other small changes. Check commit history for details.
@@ -14,6 +18,8 @@ Also new, dynamic dispatch, compile all code with normal arguments and the files
 
 Scalar code has been added, so its now possible to run on stuff older then Haswell, although, not recommended as the performance is weak.
 For comparison, my R7 5700x can do around 250 FPS on a 4k \* 2k frame size, my old i7 4720HQ can only do 55 IIRC.
+
+</details>
  
 # What's this?
 
@@ -23,11 +29,33 @@ The initial idea was to make this work with images, video and possibily 360º vi
 
 The main purpose of this is to, in real time, do a sort of unfold of a video and make it viewable. Below is an example of the original image and the transformation. 
 
+# Example Images
+
+<details>
+
 ### Original
 ![Original](/media/unfolded.png "Original")
 
 ### Folded
 ![Folded](/media/folded.png "Folded")
+
+</details>
+
+# Example Videos
+<details>
+
+### Input video
+https://github.com/isots-code/QuadDiamondUnfold/assets/23300310/fcb36462-322d-4be5-b8a1-257ca26f6cea
+
+### Compressed Output
+https://github.com/isots-code/QuadDiamondUnfold/assets/23300310/caa26af8-361f-40e4-91ae-b206811762df
+
+### Decompressed Output
+https://github.com/isots-code/QuadDiamondUnfold/assets/23300310/4f24e0fb-01fd-4daa-8136-a907956172f1
+
+</details>
+
+# More info
 
 This project is about reversing the transformation so as to be viewed as the original format.
 
@@ -75,6 +103,9 @@ The results can be view here:
 [R7-5700X](/benchmarks/r7_5700x_ddr4_3600MTs_tuned.txt)
 
 Here's a small snippet on my desktop 5700X machine, the rest of the numbers and the run on the 4720HQ can be found on the [benchmarks](/benchmarks) folder.
+
+<details>
+	<summary>Benchmark Summary</summary>
 
 ```
 2023-11-29T12:16:02+00:00
@@ -155,3 +186,4 @@ bench_avx_multi_lanczosN/16/10/8                        103 ms		1.21449 Gpixels/
 bench_avx_multi_lanczosN/16/10/16                       141 ms		909.507 Mpixels/s items_per_second=7.10552 FPS
 bench_avx_multi_centrip_catmull_rom/16/10/1             146 ms		874.037 Mpixels/s items_per_second=6.82842 FPS
 ```
+</details>
