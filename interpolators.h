@@ -39,7 +39,7 @@ void centrip_catmull_rom(const bool op, const int width, const int len, const in
 #define create_interp(s, x) { s, x, #s }
 
 inline interp_t interpolators[] = {
-   create_interp(nearest, 1),
+   create_interp(nearest, 2),
    create_interp(linear, 2),
    create_interp(cubic, 4),
    create_interp(catmull_rom, 4),
@@ -64,5 +64,5 @@ enum interpolator {
 	LANCZOS3,
 	LANCZOS4,
 	LANCZOSN,
-	CENTRIPETAL_CATMULL_ROM = 0
+	CENTRIPETAL_CATMULL_ROM
 };

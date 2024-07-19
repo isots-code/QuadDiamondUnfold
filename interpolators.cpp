@@ -6,9 +6,11 @@ void centripetalCatMullRomInterpolation_scalar(const bool op, const int width, c
 extern void centripetalCatMullRomInterpolation_AVX2(const bool op, const int width, const int len, const int i, const float* __restrict in, int* __restrict out);
 
 std::vector<float> nearest(double x, int taps) {
-	(void)x;
-	(void)taps;
-	return std::vector<float>({ 1.0 });
+	auto ret = std::vector<float>(taps, 0.0);
+	x = std::round(x);
+	ret[0] = 1 - x;
+	ret[1] = x;
+	return ret;
 }
 
 std::vector<float> linear(double x, int taps) {

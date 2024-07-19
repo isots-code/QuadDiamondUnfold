@@ -60,8 +60,8 @@ void frameData::lineData::decompressLine(const void* in, void* out) {
 }
 
 void frameData::lineData::compressLine(const void* in, void* out) {
-	float inTopArray[3][paddedLen + taps];
-	float inBotArray[3][paddedLen + taps];
+	float inTopArray[3][width + 2 * taps];
+	float inBotArray[3][width + 2 * taps];
 	int outTopArray[3][width];
 	int outBotArray[3][width];
 	inTopLine = { inTopArray[0] + tapsOffset, inTopArray[1] + tapsOffset, inTopArray[2] + tapsOffset };
@@ -113,7 +113,7 @@ void frameData::lineData::buildDecompressLineCoeffs(void) {
 }
 
 void frameData::lineData::buildCompressLineCoeffs(void) {
-	const double distanceJ = lenghtJ / (double)width;
+	const double distanceJ = (double)width / lenghtJ;
 	for (int x = 0; x < lenghtJ; x++) {
 		auto x_ = distanceJ * x;
 		x_ -= floor(x_);
@@ -204,29 +204,27 @@ void frameData::lineData::storeLinesDecompression(T* out) {
 
 template<typename T>
 void frameData::lineData::gatherLinesCompression(const T* in) {
-	for (int i = 0; i < lenghtJ; i++) {
 
-		int x_access = i * (width / (float)lenghtJ);
-
-		for (int component = 0; component < 3; component++) {
-			auto compInPtr = in + (width * height * component);
-			inTopLine[component][i] = compInPtr[x_access + y * width];
-			inBotLine[component][i] = compInPtr[x_access + (height - 1 - y) * width];
+	for (int component = 0; component < 3; component++) {
+		auto compInPtr = in + (width * height * component);
+		for (int i = 0; i < width; i++) {
+			inTopLine[component][i] = compInPtr[i + y * width];
+			inBotLine[component][i] = compInPtr[i + (height - 1 - y) * width];
 		}
 
 	}
 
 	//margins
 	for (int i = 0; i < taps / 2; i++) {
-		auto leftOffset = (i - tapsOffset) % lenghtJ;
-		leftOffset += leftOffset < 0 ? lenghtJ : 0;
-		auto rightOffset = (lenghtJ + i) % lenghtJ;
-		rightOffset += rightOffset < 0 ? lenghtJ : 0;
+		auto leftOffset = (i - tapsOffset) % width;
+		leftOffset += leftOffset < 0 ? width : 0;
+		auto rightOffset = (width + i) % width;
+		rightOffset += rightOffset < 0 ? width : 0;
 		for (int component = 0; component < 3; component++) {
 			inTopLine[component][i - tapsOffset] = inTopLine[component][leftOffset];
-			inTopLine[component][i + lenghtJ] = inTopLine[component][rightOffset];
+			inTopLine[component][i + width] = inTopLine[component][rightOffset];
 			inBotLine[component][i - tapsOffset] = inBotLine[component][leftOffset];
-			inBotLine[component][i + lenghtJ] = inBotLine[component][rightOffset];
+			inBotLine[component][i + width] = inBotLine[component][rightOffset];
 		}
 	}
 }
@@ -241,17 +239,15 @@ void frameData::lineData::interpLinesCompression(void) {
 			}
 		}
 	} else {
+		const double distanceJ = (double)width / lenghtJ;
 		for (int i = 0; i < lenghtJ; i++) {
 
 			float sumTop[3] = { 0.5f, 0.5f, 0.5f },
 				sumBot[3] = { 0.5f, 0.5f, 0.5f };
 
-			for (int j = 0; j < taps; j++) {
-				float coeff = coeffs[j][i];
-				int x_access = i + j - tapsOffset;
-				x_access += (x_access < 0) * lenghtJ;
-				x_access -= (x_access >= lenghtJ) * lenghtJ;
-				if ((x_access < 0) || (x_access >= lenghtJ)) x_access = x_access % lenghtJ;
+			for (int tap = 0, start_x = i * distanceJ, x_access; tap < taps; tap++, start_x++) {
+				x_access = start_x - tapsOffset;
+				float coeff = coeffs[tap][i];
 				for (int component = 0; component < 3; component++) {
 					sumTop[component] += inTopLine[component][x_access] * coeff;
 					sumBot[component] += inBotLine[component][x_access] * coeff;
