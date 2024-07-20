@@ -48,10 +48,10 @@ The main purpose of this is to, in real time, do a sort of unfold of a video and
 https://github.com/isots-code/QuadDiamondUnfold/assets/23300310/fcb36462-322d-4be5-b8a1-257ca26f6cea
 
 ### Compressed Output
-https://github.com/isots-code/QuadDiamondUnfold/assets/23300310/caa26af8-361f-40e4-91ae-b206811762df
+https://github.com/user-attachments/assets/c875d080-d412-466a-b99f-bcc4036b6231
 
 ### Decompressed Output
-https://github.com/isots-code/QuadDiamondUnfold/assets/23300310/4f24e0fb-01fd-4daa-8136-a907956172f1
+https://github.com/user-attachments/assets/6f6034b9-aa96-4ccd-a5a3-e84d7151fb7d
 
 </details>
 
