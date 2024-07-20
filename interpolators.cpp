@@ -34,10 +34,10 @@ std::vector<float> catmull_rom(double x, int taps) {
 	auto ret = std::vector<float>(taps, 0.0);
 	auto x2 = x * x;
 	auto x3 = x2 * x;
-	ret[0] = x3 - x2;
-	ret[1] = -3 * x3 + 4 * x2 + x;
-	ret[2] = 3 * x3 - 5 * x2 + 2;
-	ret[3] = -x3 + 2 * x2 - x;
+	ret[3] = (x3 - x2) / 2;
+	ret[2] = (-3 * x3 + 4 * x2 + x) / 2;
+	ret[1] = (3 * x3 - 5 * x2 + 2) / 2;
+	ret[0] = (-x3 + 2 * x2 - x) / 2;
 	return ret;
 }
 
@@ -148,7 +148,7 @@ void centrip_catmull_rom(const bool op, const int width, const int lenghtJ, cons
 }
 
 void centripetalCatMullRomInterpolation_scalar(const bool op, const int width, const int lenghtJ, const int i, const float* __restrict in, int* __restrict out) {
-	const float Dj = op ? 1.0f : lenghtJ / (float)width;
+	const float Dj = op ? (float)width / lenghtJ : lenghtJ / (float)width;
 	float x = Dj * i;
 	float x_floor = std::floorf(x);
 	x -= x_floor;
