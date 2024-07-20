@@ -7,7 +7,7 @@ extern void centripetalCatMullRomInterpolation_AVX2(const bool op, const int wid
 
 std::vector<float> nearest(double x, int taps) {
 	auto ret = std::vector<float>(taps, 0.0);
-	x = std::round(x);
+	x = std::roundf((float)x);
 	ret[0] = 1 - x;
 	ret[1] = x;
 	return ret;

@@ -113,9 +113,8 @@ void frameData::lineData::buildDecompressLineCoeffs(void) {
 }
 
 void frameData::lineData::buildCompressLineCoeffs(void) {
-	const double distanceJ = (double)width / lenghtJ;
 	for (int x = 0; x < lenghtJ; x++) {
-		auto x_ = distanceJ * x;
+		auto x_ = x * width / (double)lenghtJ; //n�o remover divis�o, erros de float
 		x_ -= floor(x_);
 		auto coeff = parent.interp.func(x_, taps);
 		for (int i = 0; i < taps; i++)
@@ -245,8 +244,9 @@ void frameData::lineData::interpLinesCompression(void) {
 			float sumTop[3] = { 0.5f, 0.5f, 0.5f },
 				sumBot[3] = { 0.5f, 0.5f, 0.5f };
 
-			for (int tap = 0, start_x = i * distanceJ, x_access; tap < taps; tap++, start_x++) {
-				x_access = start_x - tapsOffset;
+			int start_x = (float)(i * distanceJ);
+			for (int tap = 0 ; tap < taps; tap++, start_x++) {
+				int x_access = start_x - tapsOffset;
 				float coeff = coeffs[tap][i];
 				for (int component = 0; component < 3; component++) {
 					sumTop[component] += inTopLine[component][x_access] * coeff;

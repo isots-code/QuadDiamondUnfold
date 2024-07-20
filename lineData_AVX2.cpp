@@ -112,13 +112,13 @@ void frameData::lineData::storeLinesDecompression_AVX2(T* out) {
 
 template<typename T>
 void frameData::lineData::gatherLinesCompression_AVX2(const T* in) {
-	for (int i = 0; i < lenghtJ; i += Vec8i::size()) {
+	for (int component = 0; component < 3; component++) {
+		auto compInPtr = in + (width * height * component);
+		for (int i = 0; i < width; i += Vec8i::size()) {
 
-		Vec8i x_access = roundi((Vec8f(i) + Vec8f(0, 1, 2, 3, 4, 5, 6, 7)) * (width / (float)lenghtJ));
-		x_access = (x_access < width) & x_access;
+			Vec8i x_access = Vec8i(i) + Vec8i(0, 1, 2, 3, 4, 5, 6, 7);
+			x_access = (x_access < width) & x_access;
 
-		for (int component = 0; component < 3; component++) {
-			auto compInPtr = in + (width * height * component);
 			gather(compInPtr, x_access + y * width).store(&(inTopLine[component][i]));
 			gather(compInPtr, x_access + (height - 1 - y) * width).store(&(inBotLine[component][i]));
 		}
@@ -127,15 +127,15 @@ void frameData::lineData::gatherLinesCompression_AVX2(const T* in) {
 
 	//margins
 	for (int i = 0; i < taps / 2; i++) {
-		auto leftOffset = (i - tapsOffset) % lenghtJ;
-		leftOffset += leftOffset < 0 ? lenghtJ : 0;
-		auto rightOffset = (lenghtJ + i) % lenghtJ;
-		rightOffset += rightOffset < 0 ? lenghtJ : 0;
+		auto leftOffset = (i - tapsOffset) % width;
+		leftOffset += leftOffset < 0 ? width : 0;
+		auto rightOffset = (width + i) % width;
+		rightOffset += rightOffset < 0 ? width : 0;
 		for (int component = 0; component < 3; component++) {
 			inTopLine[component][i - tapsOffset] = inTopLine[component][leftOffset];
-			inTopLine[component][i + lenghtJ] = inTopLine[component][rightOffset];
+			inTopLine[component][i + width] = inTopLine[component][rightOffset];
 			inBotLine[component][i - tapsOffset] = inBotLine[component][leftOffset];
-			inBotLine[component][i + lenghtJ] = inBotLine[component][rightOffset];
+			inBotLine[component][i + width] = inBotLine[component][rightOffset];
 		}
 	}
 }
@@ -156,18 +156,20 @@ void frameData::lineData::interpLinesCompression_AVX2(void) {
 			}
 		}
 	} else {
+		const double distanceJ = (double)width / lenghtJ;
 		for (int i = 0; i < lenghtJ; i += Vec8f::size()) {
 
 			Vec8f sumTop[3] = { Vec8f(0.5f), Vec8f(0.5f) , Vec8f(0.5f) },
 				sumBot[3] = { Vec8f(0.5f), Vec8f(0.5f) , Vec8f(0.5f) };
 
-			for (int j = 0; j < taps; j++) {
-				Vec8f coeff = Vec8f().load(&coeffs[j][i]);
-				Vec8i x_access = (i + j - tapsOffset) + Vec8i(0, 1, 2, 3, 4, 5, 6, 7);
-				Vec8i baseIndex(x_access[i]);
+			Vec8i start_x = truncatei(to_float(Vec8d(i + 0, i + 1, i + 2, i + 3, i + 4, i + 5, i + 6, i + 7) * distanceJ));
+			start_x = (start_x < width + taps) & start_x;
+			for (int tap = 0; tap < taps; tap++, start_x++) {
+				Vec8i x_access = start_x - tapsOffset;
+				Vec8f coeff = Vec8f().load(&coeffs[tap][i]);
 				for (int component = 0; component < 3; component++) {
-					sumTop[component] += lookup8(x_access - baseIndex, Vec8f().load(inTopLine[component] + x_access[i])) * coeff;
-					sumBot[component] += lookup8(x_access - baseIndex, Vec8f().load(inBotLine[component] + x_access[i])) * coeff;
+					sumTop[component] += gather(inTopLine[component], x_access) * coeff;
+					sumBot[component] += gather(inBotLine[component], x_access) * coeff;
 				}
 			}
 
