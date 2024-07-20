@@ -134,15 +134,17 @@ void ffmpegDecode::decodeLoop(void) {
 			// Fill the array with the raw frame data
 			auto buffer = frameDataLookUp->getInputBuffer();
 			switch (codec_ctx->pix_fmt) {
-
+				case AV_PIX_FMT_YUVJ444P:
 				case AV_PIX_FMT_YUV444P:
 					ret = av_image_copy_to_buffer(reinterpret_cast<uint8_t*>(buffer), codec_ctx->width * codec_ctx->height * 3, frame->data, frame->linesize, AV_PIX_FMT_YUV444P, codec_ctx->width, codec_ctx->height, 1);
 					break;
+				case AV_PIX_FMT_YUVJ420P:
 				case AV_PIX_FMT_YUV420P:
 					ret = av_image_copy_to_buffer(reinterpret_cast<uint8_t*>(buffer), codec_ctx->width * codec_ctx->height * 3 / 2, frame->data, frame->linesize, AV_PIX_FMT_YUV420P, codec_ctx->width, codec_ctx->height, 1);
 					frameData::expandUV(reinterpret_cast<uint8_t*>(buffer) + codec_ctx->width * codec_ctx->height, codec_ctx->width, codec_ctx->height);
 					break;
 				default:
+					std::cout << "Unsuported pixel format\n";
 					throw std::runtime_error("Unsuported pixel format");
 
 			}
