@@ -24,7 +24,7 @@ void frameData::expandUV_AVX2(uint8_t* data, int width, int height) {
 
 	for (int y = 0; y < height / 2; y++) {
 		int x = 0;
-		for (; x < (width / 2) - (Vec16uc::size() - 1); x += Vec16uc::size()) {
+		for (; x < (width / 2) - (Vec16uc::size() + 1); x += Vec16uc::size()) {
 			for (int comp = 0; comp < 2; comp++) {
 				Vec32uc in(Vec16uc().load(&input.at(x, y, comp)), Vec16uc());
 				Vec32uc out(lookup32(LUT, in));
@@ -67,7 +67,7 @@ void frameData::expandUV_AVX2(uint16_t* data, int width, int height) {
 
 	for (int y = 0; y < height / 2; y++) {
 		int x = 0;
-		for (; x < (width / 2) - (Vec8us::size() - 1); x += Vec8us::size()) {
+		for (; x < (width / 2) - (Vec8us::size() + 1); x += Vec8us::size()) {
 			for (int comp = 0; comp < 2; comp++) {
 				Vec16us in(Vec8us().load(&input.at(x, y, comp)), Vec8us());
 				Vec16us out(lookup16(LUT, in));

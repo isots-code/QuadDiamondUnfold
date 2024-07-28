@@ -199,7 +199,7 @@ template<>
 void store2out(const int* in, uint8_t* out, int length, frameData::bitPerSubPixel_t bits) {
 	(void)bits;
 	int i = 0;
-	for (; i < length - Vec32uc::size() - 1; i += Vec32uc::size()) {
+	for (; i < length - Vec32uc::size() + 1; i += Vec32uc::size()) {
 		Vec8i a = Vec8i().load(in + i);
 		Vec8i b = Vec8i().load(in + i + 8);
 		Vec8i c = Vec8i().load(in + i + 16);
@@ -220,7 +220,7 @@ void store2out(const int* in, uint8_t* out, int length, frameData::bitPerSubPixe
 template<>
 void store2out(const int* in, uint16_t* out, int length, frameData::bitPerSubPixel_t bits) {
 	int i = 0;
-	for (; i < length - Vec16us::size() - 1; i += Vec16us::size()) {
+	for (; i < length - Vec16us::size() + 1; i += Vec16us::size()) {
 		Vec8i a = Vec8i().load(in + i);
 		Vec8i b = Vec8i().load(in + i + 8);
 		compress_saturated(a, b).store_nt(out + i);
