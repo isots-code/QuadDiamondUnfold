@@ -2,11 +2,9 @@
 
 #include "instrset.h"
 
-static size_t a();
-
 frameData::frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, customInterp_t customInterp, bool simd, int numThreads)
 	: ThreadedExecutor((dim * dim * 3) * (op ? 2 : 1) * ((bits + 7) / 8), (dim * dim * 3) * (op ? 1 : 2) * ((bits + 7) / 8), numThreads)
-	, bitPerSubPixel(bits), op(op), taps(taps), width(2 * dim), height(dim), interp(nullptr), customInterp(customInterp), simd(simd ? instrset_detect() >= 8 : false) {
+	, bitPerSubPixel(bits), op(op), simd(simd ? instrset_detect() >= 8 : false), taps(taps), width(2 * dim), height(dim), interp(nullptr), customInterp(customInterp) {
 	lines.reserve(height / 2);
 	for (int i = 0; i < height / 2; i++)
 		lines.emplace_back(*this, i);
@@ -14,7 +12,7 @@ frameData::frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, customIn
 
 frameData::frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, interp_t interp, bool simd, int numThreads)
 	: ThreadedExecutor((dim * dim * 3) * (op ? 2 : 1) * ((bits + 7) / 8), (dim * dim * 3) * (op ? 1 : 2)  * ((bits + 7) / 8), numThreads),
-	bitPerSubPixel(bits), op(op), taps(taps), width(2 * dim), height(dim), interp(interp), customInterp(nullptr), simd(simd ? instrset_detect() >= 8 : false) {
+	bitPerSubPixel(bits), op(op), simd(simd ? instrset_detect() >= 8 : false), taps(taps), width(2 * dim), height(dim), interp(interp), customInterp(nullptr) {
 	lines.reserve(height / 2);
 	for (int i = 0; i < height / 2; i++)
 		lines.emplace_back(*this, i);
@@ -73,17 +71,4 @@ template void frameData::expandUV(uint16_t* data, int width, int height);
 void frameData::kernel(const int id) {
 	for (int i = id; i < height / 2; i += this->numThreads) // topo e fundo por iteração
 		op ? lines[i].compressLine(this->input, this->output) : lines[i].decompressLine(this->input, this->output);
-};
-
-static size_t a() {
-	unsigned regs[4];
-#ifdef _WIN32
-	__cpuid((int*)regs, (int)1);
-#else
-	asm volatile
-		("cpuid" : "=a" (regs[0]), "=b" (regs[1]), "=c" (regs[2]), "=d" (regs[3])
-			: "a" (1), "c" (0));
-			// ECX is set to zero for CPUID function 4
-#endif
-	return (regs[1] >> 16) & 0xff; // EBX[23:16]
 };

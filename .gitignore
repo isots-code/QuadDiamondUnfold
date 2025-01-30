@@ -34,10 +34,11 @@
 # Visual Studio
 x64/
 .vs/
-*.sln
-*.vcxproj*
+*.vcxproj.*
 
 OUT/
 
 *.mp4
 !media/*.mp4
+ffmpeg
+google-benchmark

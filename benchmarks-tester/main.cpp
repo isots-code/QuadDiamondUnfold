@@ -9,7 +9,8 @@
 #include <Windows.h>
 #endif
 
-#include "original_version.h"
+extern void bench_og(benchmark::State& s);
+extern char (*inter[8])(char*, double, int);
 
 using namespace std::chrono;
 

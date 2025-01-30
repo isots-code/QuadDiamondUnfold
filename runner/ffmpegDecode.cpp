@@ -5,6 +5,7 @@
 #include <iostream>
 #include <exception>
 #include <stdexcept>
+#include <fstream>
 
 #include <windows.h>
 #include <process.h>
@@ -194,20 +195,28 @@ void ffmpegDecode::saveLoop(void) {
 	PROCESS_INFORMATION pi = {};
 
 	// Set up the command line for ffplay
-	std::string cmd("ffmpeg -f rawvideo -pixel_format yuv444p -r ");
+	std::string cmd("ffmpeg -f rawvideo -pixel_format yuvj444p -r ");
 	cmd += std::to_string(codec_ctx->framerate.num) + "/" + std::to_string(codec_ctx->framerate.den);
 	cmd += " -video_size ";
 	if (op)
 		cmd += std::to_string(dim) + "x" + std::to_string(dim) + " -i pipe:0";
 	else
 		cmd += std::to_string(dim * 2) + "x" + std::to_string(dim) + " -i pipe:0";
-	cmd += " -c:v libx264 -b:v 10M -y output_" + std::string(op ? "compressed" : "decompressed") + ".mp4";
+	cmd += " -pixel_format yuvj444p -c:v libx264 -preset ultrafast -b:v 10M -y output_" + std::string(op ? "compressed" : "decompressed") + ".mp4";
+	//cmd += " -pixel_format yuvj444p -c:v libx264 -preset placebo -crf 0 -y output_" + std::string(op ? "compressed" : "decompressed") + ".mp4";
 
 	// Create the ffplay process
 	if (!CreateProcessA(nullptr, (LPSTR)cmd.c_str(), nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi)) {
 		std::cout << "Failed to create process";
 		return;
 	}
+
+	//std::string filename("comp_2048x2048_yuv444.yuv");
+	//std::ofstream outFile(filename, std::ios::binary);
+	//if (!outFile) {
+	//	std::cerr << "Error opening file for writing: " << filename << std::endl;
+	//	return;
+	//}
 
 	unsigned long bytesWritten;
 	while (running) {
@@ -223,8 +232,11 @@ void ffmpegDecode::saveLoop(void) {
 			std::cout << "Failed to write to pipe";
 			break;
 		}
+
+		//outFile.write(reinterpret_cast<char*>(buffer), dim * dim * 3);
 		std::free(buffer);
 	}
+	//outFile.close();
 
 	// Clean up
 	CloseHandle(hReadPipe);

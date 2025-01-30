@@ -178,9 +178,9 @@ static char interpol_centri_catmull_rom(char* image, double x, int N) {
     uint8_t x0 = *(image + circular(x_int - 1, N));
     uint8_t x3 = *(image + circular(x_int + n0 + 1, N));
 
-    double t01 = pow((abs(x1 - x0) ^ 2) + 1, 0.25);
-    double t12 = pow((abs(x2 - x1) ^ 2) + 1, 0.25);
-    double t23 = pow((abs(x3 - x2) ^ 2) + 1, 0.25);
+    double t01 = pow(pow(abs(x1 - x0), 2) + 1, 0.25);
+    double t12 = pow(pow(abs(x2 - x1), 2) + 1, 0.25);
+    double t23 = pow(pow(abs(x3 - x2), 2) + 1, 0.25);
 
     double m1 = (x2 - x1 + t12 * ((x1 - x0) / t01 - (x2 - x0) / (t01 + t12)));
     double m2 = (x2 - x1 + t12 * ((x3 - x2) / t23 - (x3 - x1) / (t12 + t23)));
@@ -304,7 +304,7 @@ static void conversao_invUV(char* in, int N) {
 
 char (*inter[])(char*, double, int) = { interpol_nn, interpol_lin, interpol_cub, interpol_lanczos2, interpol_lanczos3, interpol_lanczos4, interpol_catmull_rom, interpol_centri_catmull_rom };
 
-static void bench_og(benchmark::State& s) {
+void bench_og(benchmark::State& s) {
     auto N = 8 << s.range(0);
     auto a = s.range(1);
     interpolador = inter[a];
@@ -316,7 +316,7 @@ static void bench_og(benchmark::State& s) {
         conversao_invY(image, N);
     }
 
-    s.SetBytesProcessed(uint64_t(s.iterations() * N * N * 2 * 1.5)); //both
+    s.SetBytesProcessed(uint64_t(s.iterations() * N * N * 2));
     s.SetItemsProcessed(s.iterations());
     s.SetLabel([](int size) {
         size_t dim = size * size * 2;
