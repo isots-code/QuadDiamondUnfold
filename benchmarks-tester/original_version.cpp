@@ -285,9 +285,6 @@ static void conversao_invUV(char* in, int N) {
             tx = (x + 1) / Dj - 1;
             rx = x + y * n2 + out;
 
-            if (x > 1950 && y == 1)
-                novo_x++;
-
             *(rx) = interpolador(linhaU, tx, Lj);
             *(rx + n2 * N) = interpolador(linhaV, tx, Lj);
 
