@@ -27,7 +27,7 @@ ffmpegDecode::ffmpegDecode(const std::filesystem::path& input, bool saving) : ru
 	// Find the video stream index
 	for (unsigned int i = 0; i < format_ctx->nb_streams; i++) {
 		if (format_ctx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
-			video_stream_index = i;
+			video_stream_index = static_cast<int>(i);
 			break;
 		}
 	}
@@ -58,14 +58,14 @@ ffmpegDecode::ffmpegDecode(const std::filesystem::path& input, bool saving) : ru
 
 }
 
-ffmpegDecode::ffmpegDecode(const std::filesystem::path& input) : ffmpegDecode(input, false) {};
+ffmpegDecode::ffmpegDecode(const std::filesystem::path& input) : ffmpegDecode(input, false) {}
 
 ffmpegDecode::~ffmpegDecode() {
 	decodeThread.join();
 	playThread.join();
 	if (saving) {
 		{
-			std::unique_lock lock(mutex);
+			std::unique_lock<std::mutex> lock(mutex);
 			cv.notify_all();
 		}
 		cv.notify_all();
@@ -83,6 +83,8 @@ void ffmpegDecode::connectFrameData(frameData& frameData) {
 	int buffer_size = av_image_get_buffer_size(AV_PIX_FMT_YUV444P, codec_ctx->width, codec_ctx->height, 1);
 
 	switch (frameData.bitPerSubPixel) {
+		case frameData::BITS_8:
+			break;
 		case frameData::BITS_9:
 		case frameData::BITS_10:
 		case frameData::BITS_11:
@@ -93,9 +95,17 @@ void ffmpegDecode::connectFrameData(frameData& frameData) {
 		case frameData::BITS_16:
 			buffer_size *= 2;
 			break;
-		default:
-			break;
 	}
+
+	buffers[0] = AlignedVector<uint8_t>(buffer_size);
+	if (buffers[0].data() == nullptr)
+		throw std::runtime_error("Error allocating buffer");
+
+	buffers[1] = AlignedVector<uint8_t>(buffer_size);
+	if (buffers[1].data() == nullptr)
+		throw std::runtime_error("Error allocating buffer");
+
+	frameDataLookUp->setIBuffers(buffers[0].data(), buffers[1].data());
 }
 
 int ffmpegDecode::getDim(void) { return codec_ctx->height; }
@@ -111,6 +121,7 @@ void ffmpegDecode::start(void) {
 
 void ffmpegDecode::decodeLoop(void) {
 
+	bool currentBuffer = false;
 	AVPacket packet;
 	while (av_read_frame(format_ctx, &packet) >= 0) {
 	  // Check if the packet is from the video stream
@@ -133,19 +144,19 @@ void ffmpegDecode::decodeLoop(void) {
 
 			// Frame successfully decoded
 			// Fill the array with the raw frame data
-			auto buffer = frameDataLookUp->getInputBuffer();
 			switch (codec_ctx->pix_fmt) {
+
 				case AV_PIX_FMT_YUVJ444P:
 				case AV_PIX_FMT_YUV444P:
-					ret = av_image_copy_to_buffer(reinterpret_cast<uint8_t*>(buffer), codec_ctx->width * codec_ctx->height * 3, frame->data, frame->linesize, AV_PIX_FMT_YUV444P, codec_ctx->width, codec_ctx->height, 1);
+					ret = av_image_copy_to_buffer(reinterpret_cast<uint8_t*>(buffers[currentBuffer].data()), codec_ctx->width * codec_ctx->height * 3, frame->data, frame->linesize, AV_PIX_FMT_YUV444P, codec_ctx->width, codec_ctx->height, 1);
 					break;
+
 				case AV_PIX_FMT_YUVJ420P:
 				case AV_PIX_FMT_YUV420P:
-					ret = av_image_copy_to_buffer(reinterpret_cast<uint8_t*>(buffer), codec_ctx->width * codec_ctx->height * 3 / 2, frame->data, frame->linesize, AV_PIX_FMT_YUV420P, codec_ctx->width, codec_ctx->height, 1);
-					frameData::expandUV(reinterpret_cast<uint8_t*>(buffer) + codec_ctx->width * codec_ctx->height, codec_ctx->width, codec_ctx->height);
+					ret = av_image_copy_to_buffer(reinterpret_cast<uint8_t*>(buffers[currentBuffer].data()), codec_ctx->width * codec_ctx->height * 3 / 2, frame->data, frame->linesize, AV_PIX_FMT_YUV420P, codec_ctx->width, codec_ctx->height, 1);
+					frameData::expandUV(buffers[currentBuffer].data() + codec_ctx->width * codec_ctx->height, codec_ctx->width, codec_ctx->height);
 					break;
 				default:
-					std::cout << "Unsuported pixel format\n";
 					throw std::runtime_error("Unsuported pixel format");
 
 			}
@@ -153,10 +164,11 @@ void ffmpegDecode::decodeLoop(void) {
 			if (ret < 0)
 				throw std::runtime_error("Error filling array");
 
+			frameDataLookUp->writeInput();
+			currentBuffer = !currentBuffer;
+
 			if (first) [[unlikely]]
 				first = false;
-
-			frameDataLookUp->queueInputBuffer(buffer);
 
 		}
 		// Free the packet
@@ -164,6 +176,7 @@ void ffmpegDecode::decodeLoop(void) {
 
 	}
 	running = false;
+	frameDataLookUp->writeInput();
 }
 
 void ffmpegDecode::saveLoop(void) {
@@ -178,7 +191,7 @@ void ffmpegDecode::saveLoop(void) {
 		.lpSecurityDescriptor = nullptr,
 		.bInheritHandle = TRUE
 	};
-	if (!CreatePipe(&hReadPipe, &hWritePipe, &sa, (dim * dim * 3) * (op ? 2 : 1))) {
+	if (!CreatePipe(&hReadPipe, &hWritePipe, &sa, static_cast<unsigned int>((dim * dim * 3) * (op ? 2 : 1)))) {
 		std::cout << "Failed to create pipes";
 		return;
 	}
@@ -206,7 +219,7 @@ void ffmpegDecode::saveLoop(void) {
 	//cmd += " -pixel_format yuvj444p -c:v libx264 -preset placebo -crf 0 -y output_" + std::string(op ? "compressed" : "decompressed") + ".mp4";
 
 	// Create the ffplay process
-	if (!CreateProcessA(nullptr, (LPSTR)cmd.c_str(), nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi)) {
+	if (!CreateProcessA(nullptr, const_cast<const LPSTR>(cmd.c_str()), nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi)) {
 		std::cout << "Failed to create process";
 		return;
 	}
@@ -220,7 +233,7 @@ void ffmpegDecode::saveLoop(void) {
 
 	unsigned long bytesWritten;
 	while (running) {
-		std::unique_lock lock(mutex);
+		std::unique_lock<std::mutex> lock(mutex);
 		cv.wait(lock);
 		if (!running)
 			break;
@@ -228,7 +241,7 @@ void ffmpegDecode::saveLoop(void) {
 			continue;
 		auto buffer = frame_buffer_queue.front();
 		frame_buffer_queue.pop();
-		if (!WriteFile(hWritePipe, buffer, (dim * dim * 3) * (op ? 1 : 2), &bytesWritten, nullptr)) {
+		if (!WriteFile(hWritePipe, buffer, static_cast<DWORD>((dim * dim * 3) * (op ? 1 : 2)), &bytesWritten, nullptr)) {
 			std::cout << "Failed to write to pipe";
 			break;
 		}
@@ -258,7 +271,7 @@ void ffmpegDecode::playLoop(void) {
 		.lpSecurityDescriptor = nullptr,
 		.bInheritHandle = TRUE
 	};
-	if (!CreatePipe(&hReadPipe, &hWritePipe, &sa, (dim * dim * 3) * (op ? 2 : 1))) {
+	if (!CreatePipe(&hReadPipe, &hWritePipe, &sa, static_cast<DWORD>((dim * dim * 3) * (op ? 2 : 1)))) {
 		std::cout << "Failed to create pipes\n";
 		return;
 	}
@@ -289,26 +302,25 @@ void ffmpegDecode::playLoop(void) {
 		cmd += std::to_string(dim * 2) + "x" + std::to_string(dim) + " -i pipe:0";
 
 	// Create the ffplay process
-	if (!CreateProcessA(nullptr, (LPSTR)cmd.c_str(), nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi)) {
+	if (!CreateProcessA(nullptr, const_cast<const LPSTR>(cmd.c_str()), nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi)) {
 		std::cout << "Failed to create process\n";
 		return;
 	}
 
 	unsigned long bytesWritten;
 	while (running) {
-		auto buffer = frameDataLookUp->dequeueOutputBuffer();
-		if (!WriteFile(hWritePipe, buffer, (dim * dim * 3) * (op ? 1 : 2), &bytesWritten, nullptr)) {
+		auto buffer = frameDataLookUp->readOutput();
+		if (!WriteFile(hWritePipe, buffer, static_cast<DWORD>((dim * dim * 3) * (op ? 1 : 2)), &bytesWritten, nullptr)) {
 			std::cout << "Failed to write to pipe";
 			break;
 		}
 		if (saving) {
-			auto bufferCopy = std::malloc((dim * dim * 3) * (op ? 1 : 2));
-			std::memcpy(bufferCopy, buffer, (dim * dim * 3) * (op ? 1 : 2));
-			std::unique_lock lock(mutex);
+			auto bufferCopy = std::malloc(static_cast<size_t>((dim * dim * 3) * (op ? 1 : 2)));
+			std::memcpy(bufferCopy, buffer, static_cast<size_t>((dim * dim * 3) * (op ? 1 : 2)));
+			std::unique_lock<std::mutex> lock(mutex);
 			frame_buffer_queue.push(bufferCopy);
 			cv.notify_one();
 		}
-		frameDataLookUp->returnOutputBuffer(buffer);
 	}
 
 	// Clean up

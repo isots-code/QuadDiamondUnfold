@@ -11,27 +11,38 @@ inline auto doNotOptimizeAway(T const& datum) {
 
 ThreadedExecutor::ThreadedExecutor(int inputSize, int outputSize, const std::size_t numThreads)
 	: input(nullptr), output(nullptr), numThreads(numThreads), mFinished(false), 
-	inputBufferPool(inputSize), outputBufferPool(outputSize) {
+	readBuffer(std::make_unique<DoubleBuffer>()), writeBuffer(std::make_unique<DoubleBuffer>()) {
+	(void)inputSize;
+	(void)outputSize;
 	start();
 }
 
 ThreadedExecutor::~ThreadedExecutor() {}
 
-void* ThreadedExecutor::getInputBuffer(void) { return inputBufferPool.GetBuffer(); }
+const void* ThreadedExecutor::readOutput(void) { return writeBuffer->Consume(); }
 
-void ThreadedExecutor::queueInputBuffer(void* buffer) { inputQueue.enqueue(buffer); }
+void* ThreadedExecutor::writeInput(void) { return  readBuffer->Produce(); }
 
-void ThreadedExecutor::returnOutputBuffer(void* buffer) { outputBufferPool.ReturnBuffer(buffer); }
+void ThreadedExecutor::setIOBuffers(void* inCurr, void* inNext, void* outCurr, void* outNext) {
+	setIBuffers(inCurr, inNext);
+	setOBuffers(outCurr, outNext);
+}
 
-void* ThreadedExecutor::dequeueOutputBuffer(void) { return outputQueue.dequeue(); }
+void ThreadedExecutor::setIBuffers(void* inCurr, void* inNext) {
+	readBuffer->setBuffers(inCurr, inNext);
+}
+
+void ThreadedExecutor::setOBuffers(void* outCurr, void* outNext) {
+	writeBuffer->setBuffers(outCurr, outNext);
+}
 
 void ThreadedExecutor::stop(void) noexcept {
 	{
-		std::unique_lock lock(mMutex);
+		std::unique_lock<std::mutex> lock(mMutex);
 		mFinished = true;
 	}
-	inputQueue.Stop();
-	outputQueue.Stop();
+	readBuffer->Stop();
+	writeBuffer->Stop();
 	for (auto& thread : mThreads)
 		thread.join();
 	mCv.notify_all();
@@ -41,41 +52,7 @@ void ThreadedExecutor::start(void) { std::thread(&ThreadedExecutor::loop, this).
 
 void ThreadedExecutor::loop(void) {
 
-	std::barrier barrier(numThreads, [&]() noexcept {
-		//using namespace std::chrono;
-		//auto execTime = high_resolution_clock::now(); // we check time b4 we wait for buffers as we just finished the kernel
-		////doNotOptimizeAway(execTime);
-		if (!mFinished) [[likely]] inputBufferPool.ReturnBuffer(input);
-		if (!mFinished) [[likely]] input = inputQueue.dequeue();
-		if (!mFinished) [[likely]] outputQueue.enqueue(output);
-		if (!mFinished) [[likely]] output = outputBufferPool.GetBuffer();
-		if (mFinished) [[unlikely]] return;
-		//static bool startup = true;
-		//static auto frames = 0ull;
-		//static auto lastTime = high_resolution_clock::now();
-		//if (!startup) [[likely]] {
-		//	auto duration = execTime - lastTime;
-		//	//doNotOptimizeAway(duration);
-		//	static auto durationTotal = static_cast<decltype(duration)>(0);
-		//	static auto durationTotalOverhead = static_cast<decltype(duration)>(0);
-		//	static auto lastPrintTime = lastTime;
-		//	durationTotal += duration;
-		//	lastTime = high_resolution_clock::now();
-		//	//doNotOptimizeAway(temp);
-		//	durationTotalOverhead += lastTime - execTime;
-		//	frames++;
-		//	if (duration_cast<milliseconds>(lastTime - lastPrintTime).count() > 125) {
-		//		//std::printf("\rfps: %10.3f avg: %10.3f frames done:%10llu overhead:%7.3f %%\t",
-		//		//	1e9 / duration.count(),
-		//		//	1e9 * frames / durationTotal.count(),
-		//		//	frames,
-		//		//	(durationTotalOverhead.count() * 100.0) / (durationTotal.count() + durationTotalOverhead.count())
-		//		//);
-		//		lastPrintTime = lastTime;
-		//	}
-		//}
-		//startup = false;
-	});
+	std::barrier barrier(numThreads, [this]() noexcept { completionFunc(); });
 
 	for (auto i = 0; i < numThreads; ++i) {
 		mThreads.emplace_back([this, &barrier](int i) {
@@ -95,128 +72,87 @@ void ThreadedExecutor::loop(void) {
 
 }
 
-//ThreadedExecutor::DoubleBuffer::DoubleBuffer(void) : running(true), is_full(false), is_empty(true) {}
-//
-//void ThreadedExecutor::DoubleBuffer::setBuffers(void* curr, void* next) {
-//	active_buffer = curr;
-//	inactive_buffer = next;
-//}
-//
-//void* ThreadedExecutor::DoubleBuffer::Produce(void) {
-//	std::unique_lock lock(mutex);
-//	while (is_full) {
-//		if (!running) return nullptr;
-//		// Wait for the consumer to consume some data
-//		// and signal that the buffer is not full.
-//		full_cv.wait(lock);
-//	//// Swap the active and inactive buffers.
-//		//std::swap(active_buffer, inactive_buffer);
-//	}
-//
-//	//// Swap the active and inactive buffers.
-//		//std::swap(active_buffer, inactive_buffer);
-//
-//	if (!is_empty) {
-//		//std::swap(active_buffer, inactive_buffer);
-//		is_full = true;
-//	}
-//
-//	// Signal that the buffer is full.
-//	is_empty = false;
-//	empty_cv.notify_one();
-//	return active_buffer;
-//}
-//
-//void* ThreadedExecutor::DoubleBuffer::Consume(void) {
-//	std::unique_lock lock(mutex);
-//	while (is_empty) {
-//		if (!running) return nullptr;
-//		// Wait for the producer to produce some data
-//		// and signal that the buffer is full.
-//		empty_cv.wait(lock);
-//	//// Swap the active and inactive buffers.
-//		//std::swap(active_buffer, inactive_buffer);
-//	}
-//
-//	// Swap the active and inactive buffers.
-//	//std::swap(active_buffer, inactive_buffer);
-//
-//	if (!is_full) {
-//		std::swap(active_buffer, inactive_buffer);
-//		is_empty = true;
-//	}
-//
-//	// Signal that the buffer is not full.
-//	is_full = false;
-//	full_cv.notify_one();
-//	return active_buffer;
-//}
-//
-//void ThreadedExecutor::DoubleBuffer::Stop(void) {
-//	std::unique_lock lock(mutex);
-//	running = false;
-//	is_full = true;
-//	empty_cv.notify_all();
-//	full_cv.notify_all();
-//}
-
-ThreadedExecutor::BufferPool::BufferPool(int bufferSize) : mBufferSize(bufferSize) {}
-
-ThreadedExecutor::BufferPool::~BufferPool() {
-	// Deallocate the buffers when the pool is destroyed
-	for (void* buffer : mBuffers)
-		std::free(buffer);
+void ThreadedExecutor::completionFunc() noexcept {
+		//using namespace std::chrono;
+		//auto execTime = high_resolution_clock::now(); // we check time b4 we wait for buffers as we just finished the kernel
+		////doNotOptimizeAway(execTime);
+	if (!mFinished) [[likely]] input = readBuffer->Consume();
+	if (!mFinished) [[likely]] output = writeBuffer->Produce();
+	if (mFinished) [[unlikely]] return;
+	//static bool startup = true;
+	//static auto frames = 0ull;
+	//static auto lastTime = high_resolution_clock::now();
+	//if (!startup) [[likely]] {
+	//	auto duration = execTime - lastTime;
+	//	//doNotOptimizeAway(duration);
+	//	static auto durationTotal = static_cast<decltype(duration)>(0);
+	//	static auto durationTotalOverhead = static_cast<decltype(duration)>(0);
+	//	static auto lastPrintTime = lastTime;
+	//	durationTotal += duration;
+	//	lastTime = high_resolution_clock::now();
+	//	//doNotOptimizeAway(temp);
+	//	durationTotalOverhead += lastTime - execTime;
+	//	frames++;
+	//	if (duration_cast<milliseconds>(lastTime - lastPrintTime).count() > 125) {
+	//		//std::printf("\rfps: %10.3f avg: %10.3f frames done:%10llu overhead:%7.3f %%\t",
+	//		//	1e9 / duration.count(),
+	//		//	1e9 * frames / durationTotal.count(),
+	//		//	frames,
+	//		//	(durationTotalOverhead.count() * 100.0) / (durationTotal.count() + durationTotalOverhead.count())
+	//		//);
+	//		lastPrintTime = lastTime;
+	//	}
+	//}
+	//startup = false;
 }
 
-void* ThreadedExecutor::BufferPool::GetBuffer() {
-	std::lock_guard<std::mutex> lock(mMutex);
-	// Check if there are any available buffers
-	if (mAvailableBuffers.empty()) {
-		// If not, allocate a new buffer and add it to the pool
-		void* buffer = std::malloc(mBufferSize);
-		mBuffers.push_back(buffer);
-		return buffer;
-	}
-	// Otherwise, take a buffer from the front of the queue and return it
-	void* buffer = mAvailableBuffers.front();
-	mAvailableBuffers.pop_front();
-	return buffer;
+ThreadedExecutor::DoubleBuffer::DoubleBuffer(void) : running(true), is_full(false), is_empty(true) {}
+
+void ThreadedExecutor::DoubleBuffer::setBuffers(void* curr, void* next) {
+	active_buffer = curr;
+	inactive_buffer = next;
 }
 
-void ThreadedExecutor::BufferPool::ReturnBuffer(void* buffer) {
-	std::lock_guard<std::mutex> lock(mMutex);
-	if(buffer) [[likely]]
-		// Add the buffer back to the pool
-		mAvailableBuffers.push_back(buffer);
+void* ThreadedExecutor::DoubleBuffer::Produce(void) {
+	std::unique_lock<std::mutex> lock(mutex);
+
+	full_cv.wait(lock, [this] { return !is_full || !running.load(); });
+
+	if (!running) return nullptr;
+
+	// Producer writes into inactive buffer
+	is_full = true;
+	is_empty = false;
+
+	// Notify consumer that new data is available
+	empty_cv.notify_one();
+
+	return inactive_buffer; // Producer always writes into inactive buffer
 }
 
-ThreadedExecutor::Queue::Queue(void) : mStopping(false) {}
+void* ThreadedExecutor::DoubleBuffer::Consume(void) {
+	std::unique_lock<std::mutex> lock(mutex);
 
-void ThreadedExecutor::Queue::Stop(void) {
-	{
-		std::unique_lock<std::mutex> lock(mMutex);
-		mStopping = true;
-	}
-	mCvDeq.notify_all();
-	mCvEnq.notify_all();
+	empty_cv.wait(lock, [this] { return !is_empty || !running.load(); });
+
+	if (!running) return nullptr;
+
+	// Swap buffers so consumer reads from the last produced data
+	std::swap(active_buffer, inactive_buffer);
+
+	is_full = false;
+	is_empty = true;
+
+	// Notify producer that buffer space is available
+	full_cv.notify_one();
+
+	return active_buffer; // Consumer reads from active buffer
 }
 
-void ThreadedExecutor::Queue::enqueue(void* buffer) {
-	std::unique_lock<std::mutex> lock(mMutex);
-	mCvEnq.wait(lock, [this] { return mQueue.size() < 10 || mStopping; });
-	if (mStopping) [[unlikely]] return;
-	if (buffer) [[likely]] {
-		mQueue.push(buffer);
-		mCvDeq.notify_one();
-	}
-}
-
-void* ThreadedExecutor::Queue::dequeue() {
-	std::unique_lock<std::mutex> lock(mMutex);
-	mCvDeq.wait(lock, [this] { return !mQueue.empty() || mStopping; });
-	if (mStopping) [[unlikely]] return nullptr;
-	void* buffer = mQueue.front();
-	mQueue.pop();
-	mCvEnq.notify_one();
-	return buffer;
+void ThreadedExecutor::DoubleBuffer::Stop(void) {
+	std::unique_lock<std::mutex> lock(mutex);
+	running = false;
+	is_full = true;
+	empty_cv.notify_all();
+	full_cv.notify_all();
 }

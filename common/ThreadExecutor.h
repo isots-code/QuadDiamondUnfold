@@ -6,6 +6,7 @@
 #include <vector>
 #include <thread>
 #include <barrier>
+#include <functional>
 #include <condition_variable>
 
 class ThreadedExecutor {
@@ -15,11 +16,11 @@ public:
 
 	~ThreadedExecutor();
 
-	void* getInputBuffer(void);
-	void queueInputBuffer(void* buffer);
-
-	void returnOutputBuffer(void* buffer);
-	void* dequeueOutputBuffer(void);
+	const void* readOutput(void);
+	void* writeInput(void);
+	void setIOBuffers(void* inCurr, void* inNext, void* outCurr, void* outNext);
+	void setIBuffers(void* inCurr, void* inNext);
+	void setOBuffers(void* outCurr, void* outNext);
 
 	void stop(void) noexcept;
 
@@ -27,9 +28,11 @@ public:
 
 protected:
 
+	class DoubleBuffer;
 
 	void start(void);
 	void loop(void);
+	void completionFunc(void) noexcept;
 
 	void* input;
 	void* output;
@@ -39,67 +42,31 @@ protected:
 	std::condition_variable mCv;
 	std::vector<std::thread> mThreads;
 
-	//class DoubleBuffer {
-	//public:
-	//	DoubleBuffer(void);
-	//
-	//	void setBuffers(void* curr, void* next);
-	//
-	//	void* Produce(void);
-	//
-	//	void* Consume(void);
-	//
-	//	void Stop(void);
-	//
-	//private:
-	//	std::atomic_bool running;
-	//	std::atomic_bool is_full;
-	//	std::atomic_bool is_empty;
-	//	void* active_buffer;
-	//	void* inactive_buffer;
-	//	std::mutex mutex;
-	//	std::condition_variable full_cv;
-	//	std::condition_variable empty_cv;
-	//};
-	//
-	//DoubleBuffer readBuffer;
-	//DoubleBuffer writeBuffer;
+	std::unique_ptr<DoubleBuffer> readBuffer;
+	std::unique_ptr<DoubleBuffer> writeBuffer;
 
-	class Queue {
+	class DoubleBuffer {
 	public:
-		Queue(void);
+		DoubleBuffer(void);
+	
+		void setBuffers(void* curr, void* next);
+	
+		void* Produce(void);
+	
+		void* Consume(void);
+	
 		void Stop(void);
-
-		void enqueue(void* buffer);
-		void* dequeue();
-
+	
 	private:
-		bool mStopping;
-		std::mutex mMutex;
-		std::queue<void*> mQueue;
-		std::condition_variable mCvDeq;
-		std::condition_variable mCvEnq;
+		std::atomic_bool running;
+		std::atomic_bool is_full;
+		std::atomic_bool is_empty;
+		void* active_buffer;
+		void* inactive_buffer;
+		std::mutex mutex;
+		std::condition_variable full_cv;
+		std::condition_variable empty_cv;
 	};
-
-	Queue inputQueue;
-	Queue outputQueue;
-
-	class BufferPool {
-	public:
-		BufferPool(int bufferSize);
-		~BufferPool();
-
-		void* GetBuffer();
-		void ReturnBuffer(void* buffer);
-
-	private:
-		int mBufferSize; // Size of each buffer in the pool
-		std::mutex mMutex; // Mutex to protect access to the pool
-		std::vector<void*> mBuffers; // All of the buffers in the pool
-		std::deque<void*> mAvailableBuffers; // Buffers that are currently available for use
-	};
-
-	BufferPool inputBufferPool;
-	BufferPool outputBufferPool;
+	
 
 };

@@ -1,3 +1,4 @@
+#include "AlignedVector.h"
 #include "frameData.h"
 
 #include <benchmark/benchmark.h>
@@ -8,6 +9,7 @@
 #ifdef _WIN32
 #include <Windows.h>
 #endif
+
 
 extern void bench_og(benchmark::State& s);
 extern char (*inter[8])(char*, double, int);
@@ -26,7 +28,10 @@ static void bench(benchmark::State& s, bool op, Args&&... args) {
 	// Taps
 	auto taps = s.range(2);
 
-	//frameData<T>::expandUV(in.data() + dim * dim, dim);
+	std::vector<T> in(dim * dim * 3);
+
+	// Variable for our results
+	AlignedVector<T> out(dim * dim * 2 * 3);
 
 	frameData* benchData;
 	if (taps == 1)
@@ -39,11 +44,12 @@ static void bench(benchmark::State& s, bool op, Args&&... args) {
 	SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
 #endif
 
-	benchData->queueInputBuffer(benchData->getInputBuffer());
+	benchData->setIOBuffers(in.data(), in.data(), out.data(), out.data());
 	// Main timing loop
 	for (auto _ : s) {
-		benchData->queueInputBuffer(benchData->getInputBuffer());
-		benchData->returnOutputBuffer(benchData->dequeueOutputBuffer());
+		benchData->writeInput();
+		benchData->expandUV(in.data() + dim * dim, dim, dim);
+		benchData->readOutput();
 	}
 
 #ifdef _WIN32
@@ -188,10 +194,10 @@ int main(int argc, char** argv) {
 	//}*/
 	
 	for (const auto size : benchmark::CreateDenseRange(6, 10, 1)) {
-		for (int i = 0; i < (sizeof(inter) / sizeof(*inter)); i++)
+		for (unsigned int i = 0; i < (sizeof(inter) / sizeof(*inter)); i++)
 			TEST("bench_og", bench_og, ArgsProduct({ { size },  { i } }));
 
-		for (const auto& interp : std::vector(std::begin(interpolators), std::end(interpolators) - 1)) {
+		for (const auto& interp : std::vector<interp_t>(std::begin(interpolators), std::end(interpolators) - 1)) {
 			TEST("bench_scalar_single_" + interp.name, bench<uint8_t>, ArgsProduct({ { 1 }, { size }, { 1 } }), 0, frameData::BITS_8, interp, false);
 			TEST("bench_scalar_multi_" + interp.name, bench<uint8_t>, ArgsProduct({ { std::thread::hardware_concurrency() }, { size }, { 1 } }), 0, frameData::BITS_8, interp, false);
 			TEST("bench_avx_single_" + interp.name, bench<uint8_t>, ArgsProduct({ { 1 }, { size }, { 1 } }), 0, frameData::BITS_8, interp, true);
