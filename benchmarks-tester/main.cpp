@@ -194,6 +194,10 @@ int main(int argc, char** argv) {
 	//}*/
 	
 	for (const auto size : benchmark::CreateDenseRange(6, 10, 1)) {
+
+		//const auto interp = interpolators[0];
+		//TEST("expand", bench<uint8_t>, ArgsProduct({ { 1 }, { size }, { 1 } }), 0, frameData::BITS_8, interp, false);
+
 		for (unsigned int i = 0; i < (sizeof(inter) / sizeof(*inter)); i++)
 			TEST("bench_og", bench_og, ArgsProduct({ { size },  { i } }));
 

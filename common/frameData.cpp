@@ -37,6 +37,11 @@ frameData::~frameData() { this->stop(); }
 template<typename T>
 void frameData::expandUV(T* data, int width, int height) {
 
+	if (instrset_detect() >= 8) {
+		expandUV_AVX2(data, width, height);
+		return;
+	}
+
 	struct wrapper {
 		T* data;
 		const size_t width;
@@ -45,23 +50,37 @@ void frameData::expandUV(T* data, int width, int height) {
 		T& at(const size_t x, const size_t y, const size_t comp) { return data[x + y * width + (height * width * comp)]; };
 	};
 
-	auto temp = new T[(width / 2) * (height / 2) * 2];
-	std::memcpy(temp, data, (width / 2) * (height / 2) * 2);
-	wrapper input(temp, width / 2, height / 2);
-	wrapper output(data, width, height);
+	//auto temp = new T[(width / 2) * (height / 2) * 2];
+	//std::memcpy(temp, data, (width / 2) * (height / 2) * 2);
+	//wrapper input(temp, width / 2, height / 2);
+	//wrapper output(data, width, height);
 
-	for (int y = 0; y < height / 2; y++) {
-		for (int x = 0; x < width / 2; ++x) {
-			for (int comp = 0; comp < 2; comp++)
+	//for (int y = 0; y < height / 2; y++) {
+	//	for (int x = 0; x < width / 2; ++x) {
+	//		for (int comp = 0; comp < 2; comp++)
+	//			output.at(2 * x, 2 * y, comp) =
+	//			output.at(2 * x + 1, 2 * y, comp) =
+	//			output.at(2 * x, 2 * y + 1, comp) =
+	//			output.at(2 * x + 1, 2 * y + 1, comp) =
+	//			input.at(x, y, comp);
+	//	}
+	//}
+
+	//delete[] temp;
+
+	wrapper input(data, width / 2, height / 2);
+	wrapper output(data, width, height);
+	for (int comp = 1; comp >= 0; comp--) {
+		for (int y = height / 2 - 1; y >= 0; y--) {
+			for (int x = width / 2 - 1; x >= 0; x--) {
 				output.at(2 * x, 2 * y, comp) =
-				output.at(2 * x + 1, 2 * y, comp) =
-				output.at(2 * x, 2 * y + 1, comp) =
-				output.at(2 * x + 1, 2 * y + 1, comp) =
-				input.at(x, y, comp);
+					output.at(2 * x + 1, 2 * y, comp) =
+					output.at(2 * x, 2 * y + 1, comp) =
+					output.at(2 * x + 1, 2 * y + 1, comp) =
+					input.at(x, y, comp);
+			}
 		}
 	}
-
-	delete[] temp;
 
 }
 
