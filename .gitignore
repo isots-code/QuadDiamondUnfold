@@ -36,6 +36,8 @@ x64/
 .vs/
 *.vcxproj.*
 
+.vscode
+
 OUT/
 
 *.mp4

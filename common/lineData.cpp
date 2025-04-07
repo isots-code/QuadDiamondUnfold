@@ -5,7 +5,7 @@
 frameData::lineData::lineData(frameData& parent, int y)
 	: op(parent.op), lenghtJ(y * 4 + 2), width(parent.width), height(parent.height), 
 	y(y), taps(parent.taps), linePad(parent.simd ? 8 : 1), paddedLen((lenghtJ / linePad)* linePad + linePad),
-	tapsOffset(-(taps / 2 - taps + 1)), outTopOffset(y * width), outBotOffset((height - 1 - y)* width), parent(parent) {
+	tapsOffset(-(taps / 2 - taps + 1)), outTopOffset(y * width), outBotOffset((height - 1 - y)* width),	parent(parent) {
 	xIndexes.resize(paddedLen);
 	yIndexes.resize(paddedLen);
 	lineIndexes.resize(op ? 0 : width / 2);
@@ -13,19 +13,20 @@ frameData::lineData::lineData(frameData& parent, int y)
 	for (auto& subCoeffs : coeffs)
 		subCoeffs.resize(op ? lenghtJ : width / 2);
 	constructLUT();
+
+	auto& inTopArray = parent.inTopArray[y % parent.numThreads];
+	auto& inBotArray = parent.inBotArray[y % parent.numThreads];
+	auto& outTopArray = parent.outTopArray[y % parent.numThreads];
+	auto& outBotArray = parent.outBotArray[y % parent.numThreads];
+	inTopLine = { inTopArray[0].data() + tapsOffset, inTopArray[1].data() + tapsOffset, inTopArray[2].data() + tapsOffset };
+	inBotLine = { inBotArray[0].data() + tapsOffset, inBotArray[1].data() + tapsOffset, inBotArray[2].data() + tapsOffset };
+	outTopLine = { outTopArray[0].data() + tapsOffset, outTopArray[1].data() + tapsOffset, outTopArray[2].data() + tapsOffset };
+	outBotLine = { outBotArray[0].data() + tapsOffset, outBotArray[1].data() + tapsOffset, outBotArray[2].data() + tapsOffset };
 }
 
 frameData::lineData::~lineData() {}
 
 void frameData::lineData::decompressLine(const void* in, void* out) {
-	float inTopArray[3][paddedLen + taps];
-	float inBotArray[3][paddedLen + taps];
-	int outTopArray[3][width];
-	int outBotArray[3][width];
-	inTopLine = { inTopArray[0] + tapsOffset, inTopArray[1] + tapsOffset, inTopArray[2] + tapsOffset };
-	inBotLine = { inBotArray[0] + tapsOffset, inBotArray[1] + tapsOffset, inBotArray[2] + tapsOffset };
-	outTopLine = { outTopArray[0] + tapsOffset, outTopArray[1] + tapsOffset, outTopArray[2] + tapsOffset };
-	outBotLine = { outBotArray[0] + tapsOffset, outBotArray[1] + tapsOffset, outBotArray[2] + tapsOffset };
 	switch (this->parent.bitPerSubPixel) {
 		case BITS_8:
 			if (parent.simd) {
@@ -60,14 +61,6 @@ void frameData::lineData::decompressLine(const void* in, void* out) {
 }
 
 void frameData::lineData::compressLine(const void* in, void* out) {
-	float inTopArray[3][width + 2 * taps];
-	float inBotArray[3][width + 2 * taps];
-	int outTopArray[3][width];
-	int outBotArray[3][width];
-	inTopLine = { inTopArray[0] + tapsOffset, inTopArray[1] + tapsOffset, inTopArray[2] + tapsOffset };
-	inBotLine = { inBotArray[0] + tapsOffset, inBotArray[1] + tapsOffset, inBotArray[2] + tapsOffset };
-	outTopLine = { outTopArray[0] + tapsOffset, outTopArray[1] + tapsOffset, outTopArray[2] + tapsOffset };
-	outBotLine = { outBotArray[0] + tapsOffset, outBotArray[1] + tapsOffset, outBotArray[2] + tapsOffset };
 	switch (this->parent.bitPerSubPixel) {
 		case BITS_8:
 			if (parent.simd) {

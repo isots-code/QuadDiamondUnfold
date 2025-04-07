@@ -136,4 +136,8 @@ struct frameData : public ThreadedExecutor {
 	const interp_t interp;
 	const customInterp_t customInterp;
 	std::vector<lineData> lines;
+	std::vector<std::array<std::vector<float>, 3>> inTopArray;
+	std::vector<std::array<std::vector<float>, 3>> inBotArray;
+	std::vector<std::array<std::vector<int>, 3>> outTopArray;
+	std::vector<std::array<std::vector<int>, 3>> outBotArray;
 };
