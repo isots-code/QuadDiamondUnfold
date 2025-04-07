@@ -70,9 +70,9 @@ void frameData::expandUV(T* data, int width, int height) {
 
 	wrapper input(data, width / 2, height / 2);
 	wrapper output(data, width, height);
+	for (int comp = 1; comp >= 0; comp--) {
 	for (int y = height / 2 - 1; y >= 0; y--) {
 		for (int x = width / 2 - 1; x >= 0; x--) {
-			for (int comp = 1; comp >= 0; comp--) {
 				output.at(2 * x, 2 * y, comp) =
 					output.at(2 * x + 1, 2 * y, comp) =
 					output.at(2 * x, 2 * y + 1, comp) =
@@ -88,6 +88,6 @@ template void frameData::expandUV(uint8_t* data, int width, int height);
 template void frameData::expandUV(uint16_t* data, int width, int height);
 
 void frameData::kernel(const int id) {
-	for (int i = id; i < height / 2; i += this->numThreads) // topo e fundo por iteração
+	for (int i = id; i < height / 2; i += this->numThreads) // topo e fundo por iteraï¿½ï¿½o
 		op ? lines[i].compressLine(this->input, this->output) : lines[i].decompressLine(this->input, this->output);
 };
