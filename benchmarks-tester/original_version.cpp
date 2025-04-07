@@ -5,7 +5,6 @@
 #include <cstdlib>
 #include <cstdint>
 #include <cstring>
-#include <cstdbool>
 #include <cmath>
 
 #include <benchmark/benchmark.h>

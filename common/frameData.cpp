@@ -78,7 +78,7 @@ void frameData::expandUV(T* data, int width, int height) {
 	//			output.at(2 * x + 1, 2 * y, comp) =
 	//			output.at(2 * x, 2 * y + 1, comp) =
 	//			output.at(2 * x + 1, 2 * y + 1, comp) =
-	//			input.at(x, y, comp);
+	//				input.at(x, y, comp);
 	//	}
 	//}
 
@@ -87,12 +87,12 @@ void frameData::expandUV(T* data, int width, int height) {
 	wrapper input(data, width / 2, height / 2);
 	wrapper output(data, width, height);
 	for (int comp = 1; comp >= 0; comp--) {
-	for (int y = height / 2 - 1; y >= 0; y--) {
-		for (int x = width / 2 - 1; x >= 0; x--) {
+		for (int y = height / 2 - 1; y >= 0; y--) {
+			for (int x = width / 2 - 1; x >= 0; x--) {
 				output.at(2 * x, 2 * y, comp) =
-					output.at(2 * x + 1, 2 * y, comp) =
-					output.at(2 * x, 2 * y + 1, comp) =
-					output.at(2 * x + 1, 2 * y + 1, comp) =
+				output.at(2 * x + 1, 2 * y, comp) =
+				output.at(2 * x, 2 * y + 1, comp) =
+				output.at(2 * x + 1, 2 * y + 1, comp) =
 					input.at(x, y, comp);
 			}
 		}
