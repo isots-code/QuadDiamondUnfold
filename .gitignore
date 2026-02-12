@@ -44,3 +44,4 @@ OUT/
 !media/*.mp4
 ffmpeg
 google-benchmark
+build
