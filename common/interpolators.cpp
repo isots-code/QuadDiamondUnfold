@@ -140,8 +140,8 @@ std::vector<float> lanczosN(double x, int taps) {
 	return ret;
 }
 
-void centrip_catmull_rom(const bool op, const int width, const int lenghtJ, const int i, const float* __restrict in, int* __restrict out) {
-	if (instrset_detect() >= 8)
+void centrip_catmull_rom(const bool op, const int width, const int lenghtJ, const int i, const float* __restrict in, int* __restrict out, const bool simd) {
+	if (instrset_detect() >= 8 && simd)
 		centripetalCatMullRomInterpolation_AVX2(op, width, lenghtJ, i, in, out);
 	else
 		centripetalCatMullRomInterpolation_scalar(op, width, lenghtJ, i, in, out);
@@ -150,7 +150,7 @@ void centrip_catmull_rom(const bool op, const int width, const int lenghtJ, cons
 void centripetalCatMullRomInterpolation_scalar(const bool op, const int width, const int lenghtJ, const int i, const float* __restrict in, int* __restrict out) {
 	const float Dj = op ? (float)width / lenghtJ : lenghtJ / (float)width;
 	float x = Dj * i;
-	float x_floor = std::floorf(x);
+	float x_floor = std::floor(x);
 	x -= x_floor;
 	int x_int = x_floor;
 
@@ -159,9 +159,9 @@ void centripetalCatMullRomInterpolation_scalar(const bool op, const int width, c
 	float x2 = in[x_int + 1];
 	float x3 = in[x_int + 2];
 
-	float t01 = std::powf((x1 - x0) * (x1 - x0) + 1.0f, 0.25f);
-	float t12 = std::powf((x2 - x1) * (x2 - x1) + 1.0f, 0.25f);
-	float t23 = std::powf((x3 - x2) * (x3 - x2) + 1.0f, 0.25f);
+	float t01 = std::pow((x1 - x0) * (x1 - x0) + 1.0f, 0.25f);
+	float t12 = std::pow((x2 - x1) * (x2 - x1) + 1.0f, 0.25f);
+	float t23 = std::pow((x3 - x2) * (x3 - x2) + 1.0f, 0.25f);
 	float m1 = (x2 - x1 + t12 * ((x1 - x0) / t01 - (x2 - x0) / (t01 + t12)));
 	float m2 = (x2 - x1 + t12 * ((x3 - x2) / t23 - (x3 - x1) / (t12 + t23)));
 	float res = (((2.0f * (x1 - x2) + m1 + m2) * x + (-3.0f * (x1 - x2) - m1 - m1 - m2)) * x + m1) * x + x1;

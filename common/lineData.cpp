@@ -20,8 +20,8 @@ frameData::lineData::lineData(frameData& parent, int y)
 	auto& outBotArray = parent.outBotArray[y % parent.numThreads];
 	inTopLine = { inTopArray[0].data() + tapsOffset, inTopArray[1].data() + tapsOffset, inTopArray[2].data() + tapsOffset };
 	inBotLine = { inBotArray[0].data() + tapsOffset, inBotArray[1].data() + tapsOffset, inBotArray[2].data() + tapsOffset };
-	outTopLine = { outTopArray[0].data() + tapsOffset, outTopArray[1].data() + tapsOffset, outTopArray[2].data() + tapsOffset };
-	outBotLine = { outBotArray[0].data() + tapsOffset, outBotArray[1].data() + tapsOffset, outBotArray[2].data() + tapsOffset };
+	outTopLine = { outTopArray[0].data(), outTopArray[1].data(), outTopArray[2].data() };
+	outBotLine = { outBotArray[0].data(), outBotArray[1].data(), outBotArray[2].data() };
 }
 
 frameData::lineData::~lineData() {}
@@ -151,8 +151,8 @@ void frameData::lineData::interpLinesDecompression(void) {
 	if (parent.customInterp.func != nullptr) {
 		for (int i = 0; i < width; i++) {
 			for (int component = 0; component < 3; component++) {
-				parent.customInterp.func(false, width, lenghtJ, i, inTopLine[component], outTopLine[component]);
-				parent.customInterp.func(false, width, lenghtJ, i, inBotLine[component], outBotLine[component]);
+				parent.customInterp.func(false, width, lenghtJ, i, inTopLine[component], outTopLine[component], parent.simd);
+				parent.customInterp.func(false, width, lenghtJ, i, inBotLine[component], outBotLine[component], parent.simd);
 			}
 		}
 	} else {
@@ -175,6 +175,7 @@ void frameData::lineData::interpLinesDecompression(void) {
 
 			for (int component = 0; component < 3; component++) {
 				outTopLine[component][i] = sumTL[component];
+				// std::printf("%lu %lu\n",i, height);
 				outTopLine[component][i + height] = sumTR[component];
 				outBotLine[component][i] = sumBL[component];
 				outBotLine[component][i + height] = sumBR[component];
@@ -226,8 +227,8 @@ void frameData::lineData::interpLinesCompression(void) {
 	if (parent.customInterp.func != nullptr) {
 		for (int i = 0; i < lenghtJ; i++) {
 			for (int component = 0; component < 3; component++) {
-				parent.customInterp.func(true, width, lenghtJ, i, inTopLine[component], outTopLine[component]);
-				parent.customInterp.func(true, width, lenghtJ, i, inBotLine[component], outBotLine[component]);
+				parent.customInterp.func(true, width, lenghtJ, i, inTopLine[component], outTopLine[component], parent.simd);
+				parent.customInterp.func(true, width, lenghtJ, i, inBotLine[component], outBotLine[component], parent.simd);
 			}
 		}
 	} else {

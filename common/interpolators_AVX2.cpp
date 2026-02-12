@@ -6,10 +6,10 @@
 template <typename T>
 Vec8f gather(const T* in, const Vec8i index) {
 	if constexpr (std::same_as<T, float>)
-		return _mm256_i32gather_ps(in, index, sizeof(*in));
+		return Vec8f(_mm256_i32gather_ps(in, index, sizeof(*in)));
 	else {
 		auto mask = Vec8i(UINT_MAX >> 8 * (4 - sizeof(T)));
-		return to_float(mask & _mm256_i32gather_epi32(reinterpret_cast<const int*>(in), index, sizeof(*in)));
+		return to_float(mask & Vec8i(_mm256_i32gather_epi32(reinterpret_cast<const int*>(in), index, sizeof(*in))));
 	}
 }
 

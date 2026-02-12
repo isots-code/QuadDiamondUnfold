@@ -17,10 +17,10 @@ struct interp_t {
 };
 
 struct customInterp_t {
-	void (*func)(const bool op, const int width, const int len, const int i, const float* __restrict in, int* __restrict out);
+	void (*func)(const bool op, const int width, const int len, const int i, const float* __restrict in, int* __restrict out, const bool simd);
 	int taps;
 	explicit customInterp_t(void* ptr) { (void)ptr; func = nullptr; taps = 0; };
-	customInterp_t(void (*func)(const bool op, const int width, const int len, const int i, const float* __restrict in, int* __restrict out), int taps, const char* name) : func(func), taps(taps), name(name) {};
+	customInterp_t(void (*func)(const bool op, const int width, const int len, const int i, const float* __restrict in, int* __restrict out, const bool simd), int taps, const char* name) : func(func), taps(taps), name(name) {};
 	const std::string name;
 };
 
@@ -34,7 +34,7 @@ std::vector<float> lanczos3(double x, int taps);
 std::vector<float> lanczos4(double x, int taps);
 std::vector<float> lanczosN(double x, int taps);
 
-void centrip_catmull_rom(const bool op, const int width, const int len, const int i, const float* __restrict in, int* __restrict out);
+void centrip_catmull_rom(const bool op, const int width, const int len, const int i, const float* __restrict in, int* __restrict out, const bool simd);
 
 #define create_interp(s, x) { s, x, #s }
 

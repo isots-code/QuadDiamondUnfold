@@ -1,6 +1,4 @@
-#define __AVX512F__
 #include <immintrin.h>
-#undef __AVX512F__
 
 #include <cmath>
 
@@ -24,10 +22,10 @@ void store2out(const int* in, T* out, int length, frameData::bitPerSubPixel_t bi
 template <typename T>
 Vec8f gather(const T* in, const Vec8i index) {
 	if constexpr (std::same_as<T, float>)
-		return _mm256_i32gather_ps(in, index, sizeof(*in));
+		return Vec8f(_mm256_i32gather_ps(in, index, sizeof(*in)));
 	else {
 		auto mask = Vec8i(UINT_MAX >> 8 * (4 - sizeof(T)));
-		return to_float(mask & _mm256_i32gather_epi32(reinterpret_cast<const int*>(in), index, sizeof(*in)));
+		return to_float(mask & Vec8i(_mm256_i32gather_epi32(reinterpret_cast<const int*>(in), index, sizeof(*in))));
 	}
 }
 
@@ -68,8 +66,8 @@ void frameData::lineData::interpLinesDecompression_AVX2(void) {
 	if (parent.customInterp.func != nullptr) {
 		for (int i = 0; i < width; i += Vec8f::size()) {
 			for (int component = 0; component < 3; component++) {
-				parent.customInterp.func(false, width, lenghtJ, i, inTopLine[component], outTopLine[component]);
-				parent.customInterp.func(false, width, lenghtJ, i, inBotLine[component], outBotLine[component]);
+				parent.customInterp.func(false, width, lenghtJ, i, inTopLine[component], outTopLine[component], parent.simd);
+				parent.customInterp.func(false, width, lenghtJ, i, inBotLine[component], outBotLine[component], parent.simd);
 			}
 		}
 	} else {
@@ -117,7 +115,7 @@ void frameData::lineData::gatherLinesCompression_AVX2(const T* in) {
 		for (int i = 0; i < width; i += Vec8i::size()) {
 
 			Vec8i x_access = Vec8i(i) + Vec8i(0, 1, 2, 3, 4, 5, 6, 7);
-			x_access = (x_access < width) & x_access;
+			x_access = Vec8i(x_access < width) & x_access;
 
 			gather(compInPtr, x_access + y * width).store(&(inTopLine[component][i]));
 			gather(compInPtr, x_access + (height - 1 - y) * width).store(&(inBotLine[component][i]));
@@ -147,8 +145,8 @@ void frameData::lineData::interpLinesCompression_AVX2(void) {
 	if (parent.customInterp.func != nullptr) {
 		for (int i = 0; i < lenghtJ; i += Vec8f::size()) {
 			for (int component = 0; component < 3; component++) {
-				parent.customInterp.func(true, width, lenghtJ, i, inTopLine[component], outTopLine[component]);
-				parent.customInterp.func(true, width, lenghtJ, i, inBotLine[component], outBotLine[component]);
+				parent.customInterp.func(true, width, lenghtJ, i, inTopLine[component], outTopLine[component], parent.simd);
+				parent.customInterp.func(true, width, lenghtJ, i, inBotLine[component], outBotLine[component], parent.simd);
 				Vec8i tempTop = Vec8i().load(&outTopLine[component][i]);
 				Vec8i tempBot = Vec8i().load(&outBotLine[component][i]);
 				max(min(tempTop, clamp_max), clamp_min).store(&(outTopLine[component][i]));
@@ -163,7 +161,7 @@ void frameData::lineData::interpLinesCompression_AVX2(void) {
 				sumBot[3] = { Vec8f(0.5f), Vec8f(0.5f) , Vec8f(0.5f) };
 
 			Vec8i start_x = truncatei(to_float(Vec8d(i + 0, i + 1, i + 2, i + 3, i + 4, i + 5, i + 6, i + 7) * distanceJ));
-			start_x = (start_x < width + taps) & start_x;
+			start_x = Vec8i(start_x < width + taps) & start_x;
 			for (int tap = 0; tap < taps; tap++, start_x++) {
 				Vec8i x_access = start_x - tapsOffset;
 				Vec8f coeff = Vec8f().load(&coeffs[tap][i]);
@@ -205,12 +203,11 @@ void store2out(const int* in, uint8_t* out, int length, frameData::bitPerSubPixe
 		Vec8i c = Vec8i().load(in + i + 16);
 		Vec8i d = Vec8i().load(in + i + 24);
 		// usar packus aqui pq satura se os nrs forem maiores k 255 ou menores k
-		// 0, portanto temos o clamp de graça
+		// 0, portanto temos o clamp de graï¿½a
 		Vec32uc(_mm256_packus_epi16(compress_saturated(a, c), compress_saturated(b, d))).store_nt(out + i);
 	}
 
 	// remainder loop
-#pragma clang loop vectorize(disable)
 	for (; i < length; ++i)
 		out[i] = std::max(std::min(in[i], 255), 0);
 
@@ -227,7 +224,6 @@ void store2out(const int* in, uint16_t* out, int length, frameData::bitPerSubPix
 	}
 
 	// remainder loop
-#pragma clang loop vectorize(disable)
 	for (; i < length; ++i)
 		out[i] = std::max(std::min(in[i], (1 << bits) - 1), 0);
 

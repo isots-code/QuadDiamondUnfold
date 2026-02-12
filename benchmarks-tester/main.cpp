@@ -155,7 +155,7 @@ static void bench(benchmark::State& s, bool op, Args&&... args) {
 //	return;
 //}
 
-#define TEST(name, func, args, ...) benchmark::RegisterBenchmark(name, [=](auto& st) { func(st, __VA_ARGS__); })->args->MeasureProcessCPUTime()->UseRealTime()->Unit(benchmark::TimeUnit::kMillisecond)
+#define TEST(name, func, args, ...) benchmark::RegisterBenchmark(name, [=](auto& st) { func(st, ##__VA_ARGS__); })->args->MeasureProcessCPUTime()->UseRealTime()->Unit(benchmark::TimeUnit::kMillisecond)
 
 int main(int argc, char** argv) {
 
