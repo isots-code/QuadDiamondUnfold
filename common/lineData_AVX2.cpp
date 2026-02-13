@@ -202,8 +202,7 @@ void store2out(const int* in, uint8_t* out, int length, frameData::bitPerSubPixe
 		Vec8i b = Vec8i().load(in + i + 8);
 		Vec8i c = Vec8i().load(in + i + 16);
 		Vec8i d = Vec8i().load(in + i + 24);
-		// usar packus aqui pq satura se os nrs forem maiores k 255 ou menores k
-		// 0, portanto temos o clamp de gra�a
+		// use packus epi16 bc it saturates to 0 and 255, so the clamp is done for free
 		Vec32uc(_mm256_packus_epi16(compress_saturated(a, c), compress_saturated(b, d))).store_nt(out + i);
 	}
 
@@ -220,7 +219,7 @@ void store2out(const int* in, uint16_t* out, int length, frameData::bitPerSubPix
 	for (; i < length - Vec16us::size() + 1; i += Vec16us::size()) {
 		Vec8i a = Vec8i().load(in + i);
 		Vec8i b = Vec8i().load(in + i + 8);
-		compress_saturated(a, b).store_nt(out + i);
+		max(min(compress_saturated(a, b), Vec16us((1 << bits) - 1)), Vec16us(0)).store_nt(out + i);
 	}
 
 	// remainder loop

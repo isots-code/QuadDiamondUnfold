@@ -104,6 +104,6 @@ template void frameData::expandUV(uint8_t* data, int width, int height);
 template void frameData::expandUV(uint16_t* data, int width, int height);
 
 void frameData::kernel(const int id) {
-	for (int i = id; i < height / 2; i += this->numThreads) // topo e fundo por itera��o
+	for (int i = id; i < height / 2; i += this->numThreads) // top and bottom per iteration
 		op ? lines[i].compressLine(this->input, this->output) : lines[i].decompressLine(this->input, this->output);
 };
