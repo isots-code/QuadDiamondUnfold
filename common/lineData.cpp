@@ -107,7 +107,7 @@ void frameData::lineData::buildDecompressLineCoeffs(void) {
 
 void frameData::lineData::buildCompressLineCoeffs(void) {
 	for (int x = 0; x < lenghtJ; x++) {
-		auto x_ = x * width / (double)lenghtJ; //n�o remover divis�o, erros de float
+		auto x_ = x * width / (double)lenghtJ; // dont remove division, float errors
 		x_ -= floor(x_);
 		auto coeff = parent.interp.func(x_, taps);
 		for (int i = 0; i < taps; i++)
