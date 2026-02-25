@@ -53,7 +53,7 @@ struct frameData : public ThreadedExecutor {
 
 	struct lineData {
 
-		lineData(frameData& parent, int y);
+		lineData(frameData* parent, int y);
 
 		lineData() = delete;
 
@@ -103,19 +103,19 @@ struct frameData : public ThreadedExecutor {
 		void constructLUT(void);
 
 	public:
-		const bool op;
-		const int lenghtJ;
-		const int width;
-		const int height;
+		bool op;
+		int lenghtJ;
+		int width;
+		int height;
+		int y;
 
 	protected:
-		const int y;
-		const int taps;
-		const int linePad;
-		const int paddedLen;
-		const int tapsOffset;
-		const size_t outTopOffset;
-		const size_t outBotOffset;
+		int taps;
+		int linePad;
+		int paddedLen;
+		int tapsOffset;
+		size_t outTopOffset;
+		size_t outBotOffset;
 		std::array<int*, 3> outTopLine;
 		std::array<int*, 3> outBotLine;
 		std::array<float*, 3> inTopLine;
@@ -124,7 +124,7 @@ struct frameData : public ThreadedExecutor {
 		std::vector<uint16_t> xIndexes;
 		std::vector<uint16_t> yIndexes;
 		std::vector<uint16_t> lineIndexes;
-		frameData& parent;
+		frameData* parent;
 
 	};
 

@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "frameData.h"
 
 #include "instrset.h"
@@ -14,8 +15,28 @@ frameData::frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, customIn
 		outTopArray.emplace_back(std::array{std::vector<int>(outputArraySize), std::vector<int>(outputArraySize), std::vector<int>(outputArraySize)});
 		outBotArray.emplace_back(std::array{std::vector<int>(outputArraySize), std::vector<int>(outputArraySize), std::vector<int>(outputArraySize)});
 	}
-	for (int i = 0; i < height / 2; i++)
-		lines.emplace_back(*this, i);
+	
+	std::mutex mtx;
+	auto threadInstance = [this, numThreads, &mtx](int threadId) {
+		for (int i = threadId; i < (height / 2) + numThreads - 1; i += numThreads) {
+			if (i >= height / 2)
+				continue;
+			frameData::lineData line(this, i);
+			{
+				std::scoped_lock lk(mtx);
+				lines.push_back(std::move(line));
+			}
+		}
+	};
+
+	std::vector<std::thread> threads;
+	for (int i = 0; i < numThreads; i++)
+		threads.emplace_back(threadInstance, i);
+
+	for (auto& t : threads)		
+		t.join();
+
+	std::ranges::sort(lines, {}, &lineData::y);
 }
 
 frameData::frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, interp_t interp, bool simd, int numThreads)
@@ -30,8 +51,28 @@ frameData::frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, interp_t
 		outTopArray.emplace_back(std::array{std::vector<int>(outputArraySize), std::vector<int>(outputArraySize), std::vector<int>(outputArraySize)});
 		outBotArray.emplace_back(std::array{std::vector<int>(outputArraySize), std::vector<int>(outputArraySize), std::vector<int>(outputArraySize)});
 	}
-	for (int i = 0; i < height / 2; i++)
-		lines.emplace_back(*this, i);
+
+	std::mutex mtx;
+	auto threadInstance = [this, numThreads, &mtx](int threadId) {
+		for (int i = threadId; i < (height / 2) + numThreads - 1; i += numThreads) {
+			if (i >= height / 2)
+				continue;
+			frameData::lineData line(this, i);
+			{
+				std::scoped_lock lk(mtx);
+				lines.push_back(std::move(line));
+			}
+		}
+	};
+
+	std::vector<std::thread> threads;
+	for (int i = 0; i < numThreads; i++)
+		threads.emplace_back(threadInstance, i);
+
+	for (auto& t : threads)		
+		t.join();
+
+	std::ranges::sort(lines, {}, &lineData::y);
 }
 
 frameData::frameData(bool op, int dim, int taps, bitPerSubPixel_t bits, customInterp_t customInterp, int numThreads) : frameData(op, dim, taps, bits, customInterp, true, numThreads) {}

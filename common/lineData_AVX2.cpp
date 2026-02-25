@@ -63,11 +63,11 @@ void frameData::lineData::interpLinesDecompression_AVX2(void) {
 
 	const int Lj = lenghtJ / 2;
 
-	if (parent.customInterp.func != nullptr) {
+	if (parent->customInterp.func != nullptr) {
 		for (int i = 0; i < width; i += Vec8f::size()) {
 			for (int component = 0; component < 3; component++) {
-				parent.customInterp.func(false, width, lenghtJ, i, inTopLine[component], outTopLine[component], parent.simd);
-				parent.customInterp.func(false, width, lenghtJ, i, inBotLine[component], outBotLine[component], parent.simd);
+				parent->customInterp.func(false, width, lenghtJ, i, inTopLine[component], outTopLine[component], parent->simd);
+				parent->customInterp.func(false, width, lenghtJ, i, inBotLine[component], outBotLine[component], parent->simd);
 			}
 		}
 	} else {
@@ -103,8 +103,8 @@ template<typename T>
 void frameData::lineData::storeLinesDecompression_AVX2(T* out) {
 	for (int component = 0; component < 3; component++) {
 		auto compOutPtr = out + (height * width * component);
-		store2out(outTopLine[component], compOutPtr + outTopOffset, width, parent.bitPerSubPixel);
-		store2out(outBotLine[component], compOutPtr + outBotOffset, width, parent.bitPerSubPixel);
+		store2out(outTopLine[component], compOutPtr + outTopOffset, width, parent->bitPerSubPixel);
+		store2out(outBotLine[component], compOutPtr + outBotOffset, width, parent->bitPerSubPixel);
 	}
 }
 
@@ -141,12 +141,12 @@ void frameData::lineData::gatherLinesCompression_AVX2(const T* in) {
 void frameData::lineData::interpLinesCompression_AVX2(void) {
 
 	const Vec8i clamp_min(0);
-	const Vec8i clamp_max((1 << parent.bitPerSubPixel) - 1);
-	if (parent.customInterp.func != nullptr) {
+	const Vec8i clamp_max((1 << parent->bitPerSubPixel) - 1);
+	if (parent->customInterp.func != nullptr) {
 		for (int i = 0; i < lenghtJ; i += Vec8f::size()) {
 			for (int component = 0; component < 3; component++) {
-				parent.customInterp.func(true, width, lenghtJ, i, inTopLine[component], outTopLine[component], parent.simd);
-				parent.customInterp.func(true, width, lenghtJ, i, inBotLine[component], outBotLine[component], parent.simd);
+				parent->customInterp.func(true, width, lenghtJ, i, inTopLine[component], outTopLine[component], parent->simd);
+				parent->customInterp.func(true, width, lenghtJ, i, inBotLine[component], outBotLine[component], parent->simd);
 				Vec8i tempTop = Vec8i().load(&outTopLine[component][i]);
 				Vec8i tempBot = Vec8i().load(&outBotLine[component][i]);
 				max(min(tempTop, clamp_max), clamp_min).store(&(outTopLine[component][i]));

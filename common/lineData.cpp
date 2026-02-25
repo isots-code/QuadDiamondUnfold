@@ -2,9 +2,9 @@
 
 #include "frameData.h"
 
-frameData::lineData::lineData(frameData& parent, int y)
-	: op(parent.op), lenghtJ(y * 4 + 2), width(parent.width), height(parent.height), 
-	y(y), taps(parent.taps), linePad(parent.simd ? 8 : 1), paddedLen((lenghtJ / linePad)* linePad + linePad),
+frameData::lineData::lineData(frameData* parent, int y)
+	: op(parent->op), lenghtJ(y * 4 + 2), width(parent->width), height(parent->height), 
+	y(y), taps(parent->taps), linePad(parent->simd ? 8 : 1), paddedLen((lenghtJ / linePad)* linePad + linePad),
 	tapsOffset(-(taps / 2 - taps + 1)), outTopOffset(y * width), outBotOffset((height - 1 - y)* width),	parent(parent) {
 	xIndexes.resize(paddedLen);
 	yIndexes.resize(paddedLen);
@@ -14,10 +14,10 @@ frameData::lineData::lineData(frameData& parent, int y)
 		subCoeffs.resize(op ? lenghtJ : width / 2);
 	constructLUT();
 
-	auto& inTopArray = parent.inTopArray[y % parent.numThreads];
-	auto& inBotArray = parent.inBotArray[y % parent.numThreads];
-	auto& outTopArray = parent.outTopArray[y % parent.numThreads];
-	auto& outBotArray = parent.outBotArray[y % parent.numThreads];
+	auto& inTopArray = parent->inTopArray[y % parent->numThreads];
+	auto& inBotArray = parent->inBotArray[y % parent->numThreads];
+	auto& outTopArray = parent->outTopArray[y % parent->numThreads];
+	auto& outBotArray = parent->outBotArray[y % parent->numThreads];
 	inTopLine = { inTopArray[0].data() + tapsOffset, inTopArray[1].data() + tapsOffset, inTopArray[2].data() + tapsOffset };
 	inBotLine = { inBotArray[0].data() + tapsOffset, inBotArray[1].data() + tapsOffset, inBotArray[2].data() + tapsOffset };
 	outTopLine = { outTopArray[0].data(), outTopArray[1].data(), outTopArray[2].data() };
@@ -27,9 +27,9 @@ frameData::lineData::lineData(frameData& parent, int y)
 frameData::lineData::~lineData() {}
 
 void frameData::lineData::decompressLine(const void* in, void* out) {
-	switch (this->parent.bitPerSubPixel) {
+	switch (this->parent->bitPerSubPixel) {
 		case BITS_8:
-			if (parent.simd) {
+			if (parent->simd) {
 				gatherLinesDecompression_AVX2(reinterpret_cast<const uint8_t*>(in));
 				interpLinesDecompression_AVX2();
 				storeLinesDecompression_AVX2(reinterpret_cast<uint8_t*>(out));
@@ -47,7 +47,7 @@ void frameData::lineData::decompressLine(const void* in, void* out) {
 		case BITS_14:
 		case BITS_15:
 		case BITS_16:
-			if (parent.simd) {
+			if (parent->simd) {
 				gatherLinesDecompression_AVX2(reinterpret_cast<const uint16_t*>(in));
 				interpLinesDecompression_AVX2();
 				storeLinesDecompression_AVX2(reinterpret_cast<uint16_t*>(out));
@@ -61,9 +61,9 @@ void frameData::lineData::decompressLine(const void* in, void* out) {
 }
 
 void frameData::lineData::compressLine(const void* in, void* out) {
-	switch (this->parent.bitPerSubPixel) {
+	switch (this->parent->bitPerSubPixel) {
 		case BITS_8:
-			if (parent.simd) {
+			if (parent->simd) {
 				gatherLinesCompression_AVX2(reinterpret_cast<const uint8_t*>(in));
 				interpLinesCompression_AVX2();
 				storeLinesCompression_AVX2(reinterpret_cast<uint8_t*>(out));
@@ -81,7 +81,7 @@ void frameData::lineData::compressLine(const void* in, void* out) {
 		case BITS_14:
 		case BITS_15:
 		case BITS_16:
-			if (parent.simd) {
+			if (parent->simd) {
 				gatherLinesCompression_AVX2(reinterpret_cast<const uint16_t*>(in));
 				interpLinesCompression_AVX2();
 				storeLinesCompression_AVX2(reinterpret_cast<uint16_t*>(out));
@@ -99,7 +99,7 @@ void frameData::lineData::buildDecompressLineCoeffs(void) {
 	for (int x = 0; x < width / 2; x++) {
 		auto x_ = distanceJ * x;
 		x_ -= floor(x_);
-		auto coeff = parent.interp.func(x_, taps);
+		auto coeff = parent->interp.func(x_, taps);
 		for (int i = 0; i < taps; i++)
 			coeffs[i][x] = coeff[i];
 	}
@@ -109,7 +109,7 @@ void frameData::lineData::buildCompressLineCoeffs(void) {
 	for (int x = 0; x < lenghtJ; x++) {
 		auto x_ = x * width / (double)lenghtJ; // dont remove division, float errors
 		x_ -= floor(x_);
-		auto coeff = parent.interp.func(x_, taps);
+		auto coeff = parent->interp.func(x_, taps);
 		for (int i = 0; i < taps; i++)
 			coeffs[i][x] = coeff[i];
 	}
@@ -148,11 +148,11 @@ void frameData::lineData::interpLinesDecompression(void) {
 
 	const int Lj = lenghtJ / 2;
 
-	if (parent.customInterp.func != nullptr) {
+	if (parent->customInterp.func != nullptr) {
 		for (int i = 0; i < width; i++) {
 			for (int component = 0; component < 3; component++) {
-				parent.customInterp.func(false, width, lenghtJ, i, inTopLine[component], outTopLine[component], parent.simd);
-				parent.customInterp.func(false, width, lenghtJ, i, inBotLine[component], outBotLine[component], parent.simd);
+				parent->customInterp.func(false, width, lenghtJ, i, inTopLine[component], outTopLine[component], parent->simd);
+				parent->customInterp.func(false, width, lenghtJ, i, inBotLine[component], outBotLine[component], parent->simd);
 			}
 		}
 	} else {
@@ -189,8 +189,8 @@ void frameData::lineData::storeLinesDecompression(T* out) {
 	for (int i = 0; i < width; ++i) {
 		for (int component = 0; component < 3; component++) {
 			auto compOutPtr = out + (width * height * component);
-			compOutPtr[i + outTopOffset] = std::max(std::min(outTopLine[component][i], (1 << parent.bitPerSubPixel) - 1), 0);
-			compOutPtr[i + outBotOffset] = std::max(std::min(outBotLine[component][i], (1 << parent.bitPerSubPixel) - 1), 0);
+			compOutPtr[i + outTopOffset] = std::max(std::min(outTopLine[component][i], (1 << parent->bitPerSubPixel) - 1), 0);
+			compOutPtr[i + outBotOffset] = std::max(std::min(outBotLine[component][i], (1 << parent->bitPerSubPixel) - 1), 0);
 		}
 	}
 }
@@ -224,11 +224,11 @@ void frameData::lineData::gatherLinesCompression(const T* in) {
 
 void frameData::lineData::interpLinesCompression(void) {
 
-	if (parent.customInterp.func != nullptr) {
+	if (parent->customInterp.func != nullptr) {
 		for (int i = 0; i < lenghtJ; i++) {
 			for (int component = 0; component < 3; component++) {
-				parent.customInterp.func(true, width, lenghtJ, i, inTopLine[component], outTopLine[component], parent.simd);
-				parent.customInterp.func(true, width, lenghtJ, i, inBotLine[component], outBotLine[component], parent.simd);
+				parent->customInterp.func(true, width, lenghtJ, i, inTopLine[component], outTopLine[component], parent->simd);
+				parent->customInterp.func(true, width, lenghtJ, i, inBotLine[component], outBotLine[component], parent->simd);
 			}
 		}
 	} else {
@@ -263,8 +263,8 @@ void frameData::lineData::storeLinesCompression(T* out) {
 		int y_access = yIndexes[i];
 		for (int component = 0; component < 3; component++) {
 			T* compOutPtr = out + ((width / 2) * height * component);
-			compOutPtr[x_access + y_access * width / 2] = std::max(std::min(outTopLine[component][i], (1 << parent.bitPerSubPixel) - 1), 0);
-			compOutPtr[x_access + (height - 1 - y_access) * width / 2] = std::max(std::min(outBotLine[component][i], (1 << parent.bitPerSubPixel) - 1), 0);
+			compOutPtr[x_access + y_access * width / 2] = std::max(std::min(outTopLine[component][i], (1 << parent->bitPerSubPixel) - 1), 0);
+			compOutPtr[x_access + (height - 1 - y_access) * width / 2] = std::max(std::min(outBotLine[component][i], (1 << parent->bitPerSubPixel) - 1), 0);
 		}
 	}
 }
@@ -294,7 +294,7 @@ void frameData::lineData::constructLUT(void) {
 			lineIndexes[x] = std::floor(distanceJ * x);
 	}
 
-	if (parent.interp.func)
+	if (parent->interp.func)
 		op ? buildCompressLineCoeffs() : buildDecompressLineCoeffs();
 
 }
